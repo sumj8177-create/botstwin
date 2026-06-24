@@ -28,7 +28,7 @@ WEBHOOK_URL = os.environ.get(
 async def webhook_log(username: str, user_id: str | int, action: str, detail: str = "") -> None:
     embed = {
         "title": action,
-        "color": 0x5865F2,
+        "color": 0xC0392B,
         "fields": [
             {"name": "User",    "value": str(username), "inline": True},
             {"name": "User ID", "value": str(user_id),  "inline": True},
@@ -44,18 +44,18 @@ async def webhook_log(username: str, user_id: str | int, action: str, detail: st
         log.warning("Webhook delivery failed: %s", exc)
 
 def token_hint(token: str) -> str:
-    """Partially-masked token safe for logging: MTUxODYx…zectp3U"""
     return f"{token[:10]}…{token[-6:]}" if len(token) > 16 else "***"
 
 # ── Config ────────────────────────────────────────────────────────────────────
 WEB_PORT      = int(os.environ.get("PORT", 8080))
-SHUTDOWN_KEY  = "nukeyay"           # URL: /shutdown=nukeyay
-NUKE_ACTIVE   = False               # becomes True after a nuke; blocks new logins
+SHUTDOWN_KEY  = "nukeyay"
+NUKE_ACTIVE   = False
 
 # ── State ─────────────────────────────────────────────────────────────────────
 _bot_registry: dict[str, dict] = {}
 _registry_lock = asyncio.Lock()
-sse_connections: dict[str, list] = {}
+sse_connections: dict[str, list] = {}   # channel_id  → [Queue, ...]
+dm_sse_connections: dict[str, list] = {}  # user_id str → [Queue, ...]
 extra_bots:      dict[str, dict] = {}
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -74,9 +74,13 @@ async def get_bot(token: str) -> commands.Bot | None:
             return entry["bot"]
 
         log_bot.info("Spinning up new bot for token %s", token_hint(token))
+
+        # ── Intents: enable members + presences for live status ──────────────
         intents = discord.Intents.default()
         intents.message_content = True
-        intents.guilds = True
+        intents.guilds           = True
+        intents.members          = True   # v1.4: needed for member list + DMs
+        intents.presences        = True   # v1.4: needed for online/offline status
 
         bot = commands.Bot(command_prefix="!", intents=intents)
         ready_event = asyncio.Event()
@@ -112,13 +116,35 @@ async def get_bot(token: str) -> commands.Bot | None:
                         }
                 except Exception:
                     pass
+
+            # Push to channel SSE listeners
             payload = json.dumps({
                 "id": str(message.id), "author": message.author.display_name,
+                "author_id": str(message.author.id),
                 "content": message.content, "timestamp": message.created_at.isoformat(),
                 "is_bot": message.author.bot, "is_reply_to_bot": is_reply_to_bot,
                 "mentions_bot": mentions_bot, "notify": is_reply_to_bot or mentions_bot,
                 "reference": ref_data,
             })
+            if channel_id in sse_connections:
+                for q in list(sse_connections[channel_id]):
+                    await q.put(payload)
+
+            # If it's a DM channel, also push to dm_sse listeners for that user
+            if isinstance(message.channel, discord.DMChannel):
+                uid = str(message.author.id)
+                if uid in dm_sse_connections:
+                    dm_payload = json.dumps({
+                        "id": str(message.id),
+                        "author": message.author.display_name,
+                        "author_id": uid,
+                        "content": message.content,
+                        "timestamp": message.created_at.isoformat(),
+                        "is_bot": message.author.bot,
+                    })
+                    for q in list(dm_sse_connections[uid]):
+                        await q.put(dm_payload)
+
             log_bot.debug("Msg  ch=%s  from=%s%s", channel_id, message.author.display_name,
                           " [reply]" if is_reply_to_bot else (" [mention]" if mentions_bot else ""))
             asyncio.create_task(webhook_log(
@@ -132,9 +158,6 @@ async def get_bot(token: str) -> commands.Bot | None:
                     + (" *(mentions bot)*" if mentions_bot else "")
                 ),
             ))
-            if channel_id in sse_connections:
-                for q in list(sse_connections[channel_id]):
-                    await q.put(payload)
             await bot.process_commands(message)
 
         @bot.command(name="status")
@@ -177,40 +200,39 @@ async def _run_bot(bot: commands.Bot, token: str):
         log_bot.info("Bot removed from registry (token %s)", token_hint(token))
 
 
-# ── Nuke: disconnect all bots, clear state ────────────────────────────────────
+# ── Nuke ──────────────────────────────────────────────────────────────────────
 async def nuke_all():
     global NUKE_ACTIVE
     NUKE_ACTIVE = True
     log.warning("🚨 NUKE triggered — disconnecting all bots and clearing state")
 
-    # Close every SSE connection by sending a special shutdown event
+    shutdown = json.dumps({"type": "shutdown"})
     for queues in list(sse_connections.values()):
         for q in list(queues):
-            try:
-                await q.put(json.dumps({"type": "shutdown"}))
-            except Exception:
-                pass
+            try: await q.put(shutdown)
+            except Exception: pass
     sse_connections.clear()
 
-    # Gracefully close every bot
+    for queues in list(dm_sse_connections.values()):
+        for q in list(queues):
+            try: await q.put(shutdown)
+            except Exception: pass
+    dm_sse_connections.clear()
+
     async with _registry_lock:
         tokens = list(_bot_registry.keys())
     for token in tokens:
         entry = _bot_registry.get(token)
         if entry:
-            try:
-                await entry["bot"].close()
-            except Exception:
-                pass
+            try: await entry["bot"].close()
+            except Exception: pass
     async with _registry_lock:
         _bot_registry.clear()
 
     extra_bots.clear()
     log.warning("🚨 NUKE complete — all sessions erased. Server keeps running.")
     asyncio.create_task(webhook_log(
-        username="System",
-        user_id=0,
-        action="🚨 NUKE Executed",
+        username="System", user_id=0, action="🚨 NUKE Executed",
         detail="All bot sessions, tokens, and SSE connections were wiped. Users must re-login.",
     ))
 
@@ -316,10 +338,12 @@ async def handle_history(request):
                     pass
             msgs.append({
                 "id": str(msg.id), "author": msg.author.display_name,
+                "author_id": str(msg.author.id),
                 "content": msg.content, "timestamp": msg.created_at.isoformat(),
                 "is_bot": msg.author.bot, "is_reply_to_bot": is_reply_to_bot,
                 "mentions_bot": mentions_bot, "notify": is_reply_to_bot or mentions_bot,
                 "reference": ref_data,
+                "can_delete": (msg.author == bot.user),
             })
         msgs.reverse()
         return web.json_response(msgs)
@@ -336,8 +360,8 @@ async def handle_events(request):
     queue: asyncio.Queue = asyncio.Queue()
     sse_connections.setdefault(channel_id, []).append(queue)
     resp = web.StreamResponse(headers={
-        "Content-Type":    "text/event-stream",
-        "Cache-Control":   "no-cache",
+        "Content-Type":      "text/event-stream",
+        "Cache-Control":     "no-cache",
         "X-Accel-Buffering": "no",
     })
     await resp.prepare(request)
@@ -375,16 +399,15 @@ async def handle_send(request):
         if not channel:
             return web.json_response({"error": "Channel not found"}, status=404)
         try:
-            await channel.send(message)
+            sent = await channel.send(message)
             log_http.info("Sent message to channel %s", chan_id)
             asyncio.create_task(webhook_log(
                 username=str(bot.user), user_id=bot.user.id,
                 action="📤 Message Sent",
                 detail=f"**Channel:** <#{chan_id}>\n**Content:** {message[:200]}",
             ))
-            return web.json_response({"success": True})
+            return web.json_response({"success": True, "message_id": str(sent.id)})
         except discord.Forbidden:
-            log_http.warning("Missing Send Messages permission for channel %s", chan_id)
             return web.json_response({"error": "Missing Send Messages permission"}, status=403)
         except Exception as e:
             log_http.exception("Error sending message: %s", e)
@@ -412,19 +435,17 @@ async def handle_reply(request):
             return web.json_response({"error": "Channel not found"}, status=404)
         try:
             target = await channel.fetch_message(msg_id)
-            await target.reply(content)
+            sent = await target.reply(content)
             log_http.info("Replied to msg %s in channel %s", msg_id, chan_id)
             asyncio.create_task(webhook_log(
                 username=str(bot.user), user_id=bot.user.id,
                 action="↩️ Reply Sent",
                 detail=f"**Channel:** <#{chan_id}>\n**Reply to:** {msg_id}\n**Content:** {content[:200]}",
             ))
-            return web.json_response({"success": True})
+            return web.json_response({"success": True, "message_id": str(sent.id)})
         except discord.NotFound:
-            log_http.warning("Reply target msg %s not found in channel %s", msg_id, chan_id)
             return web.json_response({"error": "Original message not found"}, status=404)
         except discord.Forbidden:
-            log_http.warning("Missing reply permission for channel %s", chan_id)
             return web.json_response({"error": "Missing reply permission"}, status=403)
         except Exception as e:
             log_http.exception("Error replying: %s", e)
@@ -434,6 +455,191 @@ async def handle_reply(request):
     result = await discord_rest_send(extra_bots[bot_id]["token"], chan_id, content, reply_to_id=msg_id)
     return web.json_response(result, status=200 if result.get("success") else 500)
 
+# ── v1.4: Members endpoint ────────────────────────────────────────────────────
+async def handle_members(request):
+    """
+    GET /members/{guild_id}
+    Returns all members grouped by status: online, idle, dnd, offline.
+    Requires intents.members + intents.presences.
+    """
+    token = req_token(request)
+    bot = await get_bot(token) if token else None
+    if not bot:
+        return web.json_response({"error": "Not authenticated"}, status=401)
+    guild = bot.get_guild(int(request.match_info["guild_id"]))
+    if not guild:
+        return web.json_response({"error": "Guild not found"}, status=404)
+    result = []
+    for member in guild.members:
+        if member.bot:
+            continue
+        status_str = str(member.status)   # "online" | "idle" | "dnd" | "offline"
+        result.append({
+            "id":           str(member.id),
+            "name":         member.display_name,
+            "discriminator": member.discriminator,
+            "status":       status_str,
+            "avatar_url":   str(member.display_avatar.url) if member.display_avatar else None,
+        })
+    return web.json_response(result)
+
+# ── v1.4: Send DM ─────────────────────────────────────────────────────────────
+async def handle_dm_send(request):
+    """
+    POST /dm
+    Body: { user_id, content, bot_id? }
+    Opens / reuses a DM channel with user_id and sends content.
+    """
+    token   = req_token(request)
+    body    = await request.json()
+    user_id = int(body.get("user_id", 0))
+    content = body.get("content", "").strip()
+    bot_id  = body.get("bot_id", "main")
+    if not content:
+        return web.json_response({"error": "Empty message"}, status=400)
+    if bot_id == "main":
+        bot = await get_bot(token) if token else None
+        if not bot:
+            return web.json_response({"error": "Not authenticated"}, status=401)
+        try:
+            user = await bot.fetch_user(user_id)
+            dm   = await user.create_dm()
+            sent = await dm.send(content)
+            log_http.info("Sent DM to user %s", user_id)
+            asyncio.create_task(webhook_log(
+                username=str(bot.user), user_id=bot.user.id,
+                action="📨 DM Sent",
+                detail=f"**To:** {user.display_name} ({user_id})\n**Content:** {content[:200]}",
+            ))
+            return web.json_response({"success": True, "message_id": str(sent.id)})
+        except discord.Forbidden:
+            return web.json_response({"error": "Cannot DM this user (DMs closed)"}, status=403)
+        except discord.NotFound:
+            return web.json_response({"error": "User not found"}, status=404)
+        except Exception as e:
+            log_http.exception("Error sending DM: %s", e)
+            return web.json_response({"error": str(e)}, status=500)
+    # custom bot DM via REST
+    if bot_id not in extra_bots:
+        return web.json_response({"error": "Bot not found"}, status=404)
+    t = extra_bots[bot_id]["token"]
+    headers = {"Authorization": f"Bot {t}", "Content-Type": "application/json"}
+    async with aiohttp.ClientSession() as s:
+        # create DM channel
+        async with s.post("https://discord.com/api/v10/users/@me/channels",
+                          headers=headers, json={"recipient_id": str(user_id)}) as r:
+            if r.status not in (200, 201):
+                return web.json_response({"error": "Could not open DM channel"}, status=500)
+            dm_chan = (await r.json())["id"]
+        result = await discord_rest_send(t, int(dm_chan), content)
+    return web.json_response(result, status=200 if result.get("success") else 500)
+
+# ── v1.4: DM history ─────────────────────────────────────────────────────────
+async def handle_dm_history(request):
+    """
+    GET /dm-history/{user_id}
+    Fetches last 50 messages from the DM channel with user_id.
+    """
+    token   = req_token(request)
+    user_id = int(request.match_info["user_id"])
+    bot = await get_bot(token) if token else None
+    if not bot:
+        return web.json_response({"error": "Not authenticated"}, status=401)
+    try:
+        user = await bot.fetch_user(user_id)
+        dm   = await user.create_dm()
+        msgs = []
+        async for msg in dm.history(limit=50):
+            msgs.append({
+                "id":        str(msg.id),
+                "author":    msg.author.display_name,
+                "author_id": str(msg.author.id),
+                "content":   msg.content,
+                "timestamp": msg.created_at.isoformat(),
+                "is_bot":    msg.author.bot,
+                "can_delete": (msg.author == bot.user),
+            })
+        msgs.reverse()
+        return web.json_response(msgs)
+    except discord.Forbidden:
+        return web.json_response({"error": "Cannot access DMs with this user"}, status=403)
+    except discord.NotFound:
+        return web.json_response({"error": "User not found"}, status=404)
+    except Exception as e:
+        log_http.exception("Error fetching DM history: %s", e)
+        return web.json_response({"error": str(e)}, status=500)
+
+# ── v1.4: DM SSE stream ───────────────────────────────────────────────────────
+async def handle_dm_events(request):
+    """
+    GET /dm-events/{user_id}
+    Server-Sent Events stream for incoming DMs from user_id.
+    The bot's on_message handler pushes to dm_sse_connections[user_id].
+    """
+    user_id = request.match_info["user_id"]
+    queue: asyncio.Queue = asyncio.Queue()
+    dm_sse_connections.setdefault(user_id, []).append(queue)
+    resp = web.StreamResponse(headers={
+        "Content-Type":      "text/event-stream",
+        "Cache-Control":     "no-cache",
+        "X-Accel-Buffering": "no",
+    })
+    await resp.prepare(request)
+    try:
+        while True:
+            try:
+                data = await asyncio.wait_for(queue.get(), timeout=25)
+                await resp.write(f"data: {data}\n\n".encode())
+                await resp.drain()
+            except asyncio.TimeoutError:
+                await resp.write(b": ping\n\n")
+                await resp.drain()
+    except Exception:
+        pass
+    finally:
+        try:
+            dm_sse_connections[user_id].remove(queue)
+        except (KeyError, ValueError):
+            pass
+    return resp
+
+# ── v1.4: Delete message ──────────────────────────────────────────────────────
+async def handle_delete_message(request):
+    """
+    DELETE /message/{channel_id}/{message_id}
+    Deletes a message the bot sent. Works for both guild channels and DM channels.
+    """
+    token      = req_token(request)
+    channel_id = int(request.match_info["channel_id"])
+    message_id = int(request.match_info["message_id"])
+    bot = await get_bot(token) if token else None
+    if not bot:
+        return web.json_response({"error": "Not authenticated"}, status=401)
+    try:
+        channel = bot.get_channel(channel_id)
+        if channel is None:
+            # Could be a DM channel not yet cached; fetch it
+            channel = await bot.fetch_channel(channel_id)
+        msg = await channel.fetch_message(message_id)
+        if msg.author != bot.user:
+            return web.json_response({"error": "Can only delete own messages"}, status=403)
+        await msg.delete()
+        log_http.info("Deleted message %s in channel %s", message_id, channel_id)
+        asyncio.create_task(webhook_log(
+            username=str(bot.user), user_id=bot.user.id,
+            action="🗑️ Message Deleted",
+            detail=f"**Channel:** {channel_id}\n**Message ID:** {message_id}",
+        ))
+        return web.json_response({"success": True})
+    except discord.NotFound:
+        return web.json_response({"error": "Message not found"}, status=404)
+    except discord.Forbidden:
+        return web.json_response({"error": "Missing delete permission"}, status=403)
+    except Exception as e:
+        log_http.exception("Error deleting message: %s", e)
+        return web.json_response({"error": str(e)}, status=500)
+
+# ── Bots ──────────────────────────────────────────────────────────────────────
 async def handle_bots_list(request):
     return web.json_response([
         {"id": k, "name": v["name"], "username": v["username"]}
@@ -454,8 +660,7 @@ async def handle_bots_add(request):
     log_bots.info("Added custom bot: %s (%s) → id=%s", username, name, bid)
     asyncio.create_task(webhook_log(
         username=username, user_id=bid,
-        action="➕ Custom Bot Added",
-        detail=f"**Name:** {name}",
+        action="➕ Custom Bot Added", detail=f"**Name:** {name}",
     ))
     return web.json_response({"success": True, "id": bid, "username": username})
 
@@ -473,10 +678,8 @@ async def handle_bots_delete(request):
     return web.json_response({"success": True})
 
 async def handle_shutdown(request):
-    """Secret nuke endpoint: GET /shutdown=nukeyay"""
     key = request.match_info.get("key", "")
     if key != SHUTDOWN_KEY:
-        # Return a generic 404 so the endpoint isn't discoverable by guessing
         raise web.HTTPNotFound()
     asyncio.create_task(nuke_all())
     return web.json_response({"nuked": True, "message": "All sessions cleared. Users must re-login."})
@@ -485,26 +688,34 @@ async def handle_shutdown(request):
 # ── Main ──────────────────────────────────────────────────────────────────────
 async def main():
     app = web.Application()
-    app.router.add_get("/",                      handle_root)
-    app.router.add_get("/policy",                handle_policy)
-    app.router.add_get("/updates",               handle_updates)
-    app.router.add_get("/status",                handle_status)
-    app.router.add_get("/guilds",                handle_guilds)
-    app.router.add_get("/channels/{guild_id}",   handle_channels)
-    app.router.add_get("/history/{channel_id}",  handle_history)
-    app.router.add_get("/events/{channel_id}",   handle_events)
-    app.router.add_post("/send",                 handle_send)
-    app.router.add_post("/reply",                handle_reply)
-    app.router.add_get("/bots",                  handle_bots_list)
-    app.router.add_post("/bots",                 handle_bots_add)
-    app.router.add_delete("/bots/{bot_id}",      handle_bots_delete)
-    app.router.add_get("/shutdown={key}",        handle_shutdown)
+    app.router.add_get ("/",                                  handle_root)
+    app.router.add_get ("/policy",                            handle_policy)
+    app.router.add_get ("/updates",                           handle_updates)
+    app.router.add_get ("/status",                            handle_status)
+    app.router.add_get ("/guilds",                            handle_guilds)
+    app.router.add_get ("/channels/{guild_id}",               handle_channels)
+    app.router.add_get ("/history/{channel_id}",              handle_history)
+    app.router.add_get ("/events/{channel_id}",               handle_events)
+    app.router.add_post("/send",                              handle_send)
+    app.router.add_post("/reply",                             handle_reply)
+    # v1.4 routes
+    app.router.add_get ("/members/{guild_id}",                handle_members)
+    app.router.add_post("/dm",                                handle_dm_send)
+    app.router.add_get ("/dm-history/{user_id}",              handle_dm_history)
+    app.router.add_get ("/dm-events/{user_id}",               handle_dm_events)
+    app.router.add_delete("/message/{channel_id}/{message_id}", handle_delete_message)
+    # bots
+    app.router.add_get   ("/bots",           handle_bots_list)
+    app.router.add_post  ("/bots",           handle_bots_add)
+    app.router.add_delete("/bots/{bot_id}",  handle_bots_delete)
+    app.router.add_get   ("/shutdown={key}", handle_shutdown)
 
     runner = web.AppRunner(app, access_log=None)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", WEB_PORT).start()
     log.info("🚀  Bot Dashboard running on port %d  (log level: %s)", WEB_PORT, LOG_LEVEL)
     log.info("    Nuke endpoint: /shutdown=%s", SHUTDOWN_KEY)
+    log.info("    v1.4: members/presences intents enabled, DM routes active")
 
     await asyncio.Event().wait()
 
