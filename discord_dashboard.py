@@ -255,8 +255,8 @@ async def handle_policy(request):
     from pathlib import Path
     return web.Response(body=Path(__file__).with_name("policy.html").read_bytes(),
                         content_type="text/html")
-    
-    async def handle_updates(request):
+
+async def handle_updates(request):
     from pathlib import Path
     return web.Response(body=Path(__file__).with_name("updates.html").read_bytes(),
                         content_type="text/html")
@@ -485,8 +485,9 @@ async def handle_shutdown(request):
 # ── Main ──────────────────────────────────────────────────────────────────────
 async def main():
     app = web.Application()
+    app.router.add_get("/",                      handle_root)
     app.router.add_get("/policy",                handle_policy)
-    app.router.add_get("/updates",               handle_updates)   # ← add this line
+    app.router.add_get("/updates",               handle_updates)
     app.router.add_get("/status",                handle_status)
     app.router.add_get("/guilds",                handle_guilds)
     app.router.add_get("/channels/{guild_id}",   handle_channels)
