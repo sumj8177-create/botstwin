@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: botstwin
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python discord_dashboard.py
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: LOG_WEBHOOK_URL
+        sync: false
