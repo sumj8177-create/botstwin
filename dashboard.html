@@ -12,7 +12,7 @@
 :root{
   --bg:#170d0d;--sb:#1a0f0f;--panel:#1f1010;--surf:#261414;--bord:#3d2222;
   --acc:#c0392b;--acc2:#e05a4a;--adim:rgba(192,57,43,.15);
-  --green:#2ecc71;--red:#e74c3c;--yel:#f39c12;--pink:#e91e8c;
+  --green:#2ecc71;--red:#e74c3c;--yel:#f39c12;--pink:#e91e8c;--idle:#faa61a;--dnd:#e74c3c;
   --txt:#f0e6e6;--sub:#b89090;--mut:#6b4040;
   --r:8px;--r-lg:12px;
 }
@@ -49,12 +49,13 @@ a.policy-link:hover{color:var(--txt);border-color:var(--acc);background:var(--ad
              border-radius:20px;padding:4px 12px 4px 8px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--mut);transition:background .3s;flex-shrink:0}
 .dot.online{background:var(--green);box-shadow:0 0 6px var(--green)}
-.dot.nuked{background:var(--red);box-shadow:0 0 6px var(--red)}
 
 /* ── layout ── */
 #ws{display:flex;flex:1;overflow:hidden}
+
+/* ── left sidebar ── */
 aside{width:224px;min-width:180px;background:var(--sb);border-right:1px solid var(--bord);
-      display:flex;flex-direction:column;overflow:hidden}
+      display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
 .aside-head{padding:14px 14px 6px;font-size:10px;font-weight:700;letter-spacing:.12em;
             text-transform:uppercase;color:var(--mut);display:flex;align-items:center}
 .add-btn{margin-left:auto;width:22px;height:22px;border-radius:5px;background:none;
@@ -68,21 +69,13 @@ aside{width:224px;min-width:180px;background:var(--sb);border-right:1px solid va
 .srv:hover,.bot-item:hover{background:var(--surf);color:var(--txt)}
 .srv.active{background:var(--surf);color:var(--txt);border-color:var(--bord)}
 .av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;
-    justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;position:relative}
-.av-wrap{position:relative;flex-shrink:0;width:30px;height:30px}
-.av-wrap .av{width:30px;height:30px}
-.av-status{position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;
-           border:2px solid var(--sb);background:var(--mut)}
-.av-status.online{background:var(--green)}
-.av-status.offline{background:var(--mut)}
+    justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
 .item-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .del-btn{background:none;border:none;color:transparent;cursor:pointer;
          padding:3px;border-radius:4px;display:flex;align-items:center;transition:all .15s}
 .bot-item:hover .del-btn{color:var(--mut)}
 .del-btn:hover{color:var(--red) !important;background:rgba(237,66,69,.12)}
 hr.aside-div{border:none;border-top:1px solid var(--bord);margin:6px 10px}
-
-/* ── add bot form ── */
 #addBotForm{padding:10px 10px 14px;background:var(--surf);margin:0 8px 6px;
             border-radius:var(--r-lg);border:1px solid var(--bord);display:none;flex-direction:column;gap:8px}
 .form-input{width:100%;background:var(--panel);border:1px solid var(--bord);border-radius:var(--r);
@@ -100,10 +93,30 @@ hr.aside-div{border:none;border-top:1px solid var(--bord);margin:6px 10px}
 .form-btn:disabled{opacity:.45;cursor:not-allowed}
 .form-hint{font-size:10.5px;color:var(--mut);text-align:center;line-height:1.5}
 
-/* ── main content ── */
-main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+/* ── right member panel ── */
+#memberPanel{width:200px;min-width:160px;background:var(--sb);border-left:1px solid var(--bord);
+             display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.member-head{padding:14px 14px 6px;font-size:10px;font-weight:700;letter-spacing:.12em;
+             text-transform:uppercase;color:var(--mut)}
+.member-group-label{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.1em;
+                    text-transform:uppercase;color:var(--mut)}
+.member-item{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:var(--r);
+             cursor:pointer;font-size:12.5px;font-weight:500;color:var(--sub);
+             margin:1px 6px;transition:all .15s;position:relative}
+.member-item:hover{background:var(--surf);color:var(--txt)}
+.member-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;
+           justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;position:relative}
+.m-status{position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;border-radius:50%;border:2px solid var(--sb)}
+.m-status.online{background:var(--green)}
+.m-status.idle{background:var(--idle)}
+.m-status.dnd{background:var(--dnd)}
+.m-status.offline{background:var(--mut)}
+.member-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-size:12px}
+.member-scroll{overflow-y:auto;flex:1;padding-bottom:8px}
+.member-empty{padding:14px 12px;font-size:12px;color:var(--mut);text-align:center}
 
-/* ── channel bar ── */
+/* ── main ── */
+main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;min-width:0}
 #chanBar{display:flex;align-items:center;gap:7px;padding:10px 18px;
          background:var(--panel);border-bottom:1px solid var(--bord);
          flex-shrink:0;min-height:50px;overflow-x:auto}
@@ -114,15 +127,13 @@ main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative
       white-space:nowrap;flex-shrink:0;transition:all .15s}
 .chip:hover{border-color:rgba(192,57,43,.5);color:var(--txt)}
 .chip.active{background:var(--adim);border-color:var(--acc);color:var(--acc2)}
-
-/* ── message log ── */
 #msgLog{flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:1px}
 .log-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
            gap:12px;color:var(--mut);font-size:13px;text-align:center;line-height:1.7}
 .log-state i{font-size:40px;opacity:.6}
 
 /* ── messages ── */
-.msg-item{padding:6px 8px 6px 12px;border-radius:var(--r);cursor:pointer;
+.msg-item{padding:6px 8px 6px 12px;border-radius:var(--r);
           border-left:2px solid transparent;margin-left:-12px;position:relative;transition:background .1s}
 .msg-item:hover{background:var(--surf)}
 .msg-item:hover .msg-acts{opacity:1}
@@ -140,10 +151,12 @@ main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative
 .msg-av-wrap{position:relative;flex-shrink:0;cursor:pointer}
 .msg-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;
         justify-content:center;font-size:12px;font-weight:700;color:#fff;transition:opacity .15s}
-.msg-av:hover{opacity:.85}
-.msg-av-status{position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;
-               border:2px solid var(--bg);background:var(--mut)}
-.msg-av-status.online{background:var(--green)}
+.msg-av:hover{opacity:.82}
+.msg-av-dot{position:absolute;bottom:0;right:0;width:11px;height:11px;border-radius:50%;border:2px solid var(--bg)}
+.msg-av-dot.online{background:var(--green)}
+.msg-av-dot.idle{background:var(--idle)}
+.msg-av-dot.dnd{background:var(--dnd)}
+.msg-av-dot.offline{background:var(--mut)}
 .msg-right{flex:1;min-width:0}
 .msg-meta{display:flex;align-items:baseline;gap:7px;margin-bottom:3px;flex-wrap:wrap}
 .msg-author{font-size:13px;font-weight:700;color:var(--txt);cursor:pointer;transition:color .12s}
@@ -159,6 +172,7 @@ main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative
          border:1px solid var(--bord);border-radius:var(--r);color:var(--sub);
          cursor:pointer;font-size:12px;font-family:Inter,sans-serif;font-weight:500;transition:all .12s}
 .act-btn:hover{background:var(--acc);border-color:var(--acc);color:#fff}
+.act-btn.del:hover{background:var(--red);border-color:var(--red);color:#fff}
 
 /* ── reply bar ── */
 #replyBar{display:none;align-items:center;gap:8px;padding:8px 18px;
@@ -201,7 +215,7 @@ textarea::placeholder{color:var(--mut)}
 /* ── toast ── */
 #toast{position:fixed;bottom:24px;right:24px;padding:9px 18px;border-radius:var(--r-lg);
        font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .25s;
-       z-index:999;display:flex;align-items:center;gap:9px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+       z-index:9999;display:flex;align-items:center;gap:9px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 #toast.show{opacity:1}
 #toast.ok{background:#122a1e;border:1px solid var(--green);color:#6be09a}
 #toast.warn{background:#342c10;border:1px solid var(--yel);color:var(--yel)}
@@ -260,99 +274,48 @@ textarea::placeholder{color:var(--mut)}
           display:flex;align-items:center;justify-content:center;gap:9px;transition:all .15s}
 .nuke-btn:hover{background:var(--acc2)}
 
-/* ════════════════════════════════════════
-   PROFILE PANEL (right side slide-in)
-   ════════════════════════════════════════ */
-#profilePanel{
-  position:absolute;top:0;right:0;bottom:0;width:300px;
-  background:var(--sb);border-left:1px solid var(--bord);
-  display:flex;flex-direction:column;
-  transform:translateX(100%);transition:transform .22s cubic-bezier(.4,0,.2,1);
-  z-index:50;overflow:hidden;
-}
-#profilePanel.open{transform:translateX(0)}
-.profile-header{
-  padding:14px 16px;border-bottom:1px solid var(--bord);
-  display:flex;align-items:center;justify-content:space-between;
-  background:var(--panel);flex-shrink:0;
-}
-.profile-header-left{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--sub)}
-.profile-header-left i{font-size:15px}
-.profile-close{background:none;border:none;color:var(--mut);cursor:pointer;padding:5px;
-               border-radius:6px;display:flex;align-items:center;transition:all .12s}
-.profile-close:hover{background:var(--surf);color:var(--txt)}
-
-.profile-body{flex:1;overflow-y:auto;display:flex;flex-direction:column}
-.profile-banner{height:80px;background:linear-gradient(135deg,var(--acc) 0%,#6b1a15 100%);flex-shrink:0}
-.profile-av-area{padding:0 16px;margin-top:-28px;flex-shrink:0;position:relative}
-.profile-av-big{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;
-                justify-content:center;font-size:20px;font-weight:700;color:#fff;
-                border:4px solid var(--sb);position:relative;flex-shrink:0}
-.profile-av-status-big{position:absolute;bottom:2px;right:2px;width:14px;height:14px;
-                        border-radius:50%;border:3px solid var(--sb);background:var(--mut)}
-.profile-av-status-big.online{background:var(--green)}
-.profile-info{padding:12px 16px 8px;flex-shrink:0}
-.profile-name{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:2px}
-.profile-tag{font-size:12px;color:var(--mut);font-family:"JetBrains Mono",monospace;margin-bottom:8px}
-.profile-status-row{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:12px}
-.profile-status-dot{width:8px;height:8px;border-radius:50%;background:var(--mut);flex-shrink:0}
-.profile-status-dot.online{background:var(--green);box-shadow:0 0 5px var(--green)}
-.profile-status-text{color:var(--sub)}
-.profile-divider{height:1px;background:var(--bord);margin:0 16px 12px}
-.profile-section-label{padding:0 16px 6px;font-size:10px;font-weight:700;letter-spacing:.1em;
-                        text-transform:uppercase;color:var(--mut)}
-.profile-msg-history{flex:1;overflow-y:auto;padding:0 8px 8px}
-.profile-msg{padding:6px 8px;border-radius:var(--r);margin-bottom:2px;font-size:12.5px;
-             color:var(--sub);line-height:1.5;cursor:pointer;transition:background .1s}
-.profile-msg:hover{background:var(--surf);color:var(--txt)}
-.profile-msg-time{font-size:10.5px;color:var(--mut);font-family:"JetBrains Mono",monospace;margin-bottom:2px}
-.profile-empty{padding:20px 16px;font-size:12px;color:var(--mut);text-align:center}
-
-/* DM button */
-.dm-btn{margin:0 16px 16px;padding:9px 16px;background:var(--acc);border:none;
-        border-radius:var(--r);color:#fff;font-family:Inter,sans-serif;font-size:13px;
-        font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;
-        gap:7px;transition:all .15s;flex-shrink:0}
-.dm-btn:hover{background:var(--acc2);transform:translateY(-1px)}
-.dm-btn:active{transform:scale(.97)}
-
-/* ════════════════════════════════════════
-   DM VIEW — overlays the main content area
-   ════════════════════════════════════════ */
+/* ══════════════════════════════════════
+   DM VIEW — full overlay inside main
+   ══════════════════════════════════════ */
 #dmView{
   position:absolute;inset:0;background:var(--bg);
   display:none;flex-direction:column;z-index:60;
 }
 #dmView.open{display:flex}
 .dm-topbar{
-  display:flex;align-items:center;gap:10px;padding:12px 18px;
+  display:flex;align-items:center;gap:10px;padding:0 18px;height:50px;
   background:var(--panel);border-bottom:1px solid var(--bord);flex-shrink:0;
 }
 .dm-back{display:flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--bord);
          border-radius:var(--r);background:none;cursor:pointer;font-size:13px;font-weight:500;
-         color:var(--sub);transition:all .15s;font-family:Inter,sans-serif}
+         color:var(--sub);transition:all .15s;font-family:Inter,sans-serif;flex-shrink:0}
 .dm-back:hover{border-color:var(--acc);color:var(--txt);background:var(--adim)}
-.dm-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--txt)}
-.dm-title-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;
-             justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;position:relative}
-.dm-av-dot{position:absolute;bottom:-1px;right:-1px;width:9px;height:9px;border-radius:50%;
-           border:2px solid var(--panel);background:var(--mut)}
+.dm-user-info{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.dm-title-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;
+             justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;position:relative}
+.dm-av-dot{position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--panel)}
 .dm-av-dot.online{background:var(--green)}
-.dm-status-badge{font-size:11px;font-weight:500;padding:2px 8px;border-radius:10px;margin-left:4px}
-.dm-status-badge.online{background:rgba(46,204,113,.15);color:var(--green);border:1px solid rgba(46,204,113,.3)}
-.dm-status-badge.offline{background:rgba(107,64,64,.3);color:var(--sub);border:1px solid var(--bord)}
+.dm-av-dot.idle{background:var(--idle)}
+.dm-av-dot.dnd{background:var(--dnd)}
+.dm-av-dot.offline{background:var(--mut)}
+.dm-username{font-size:14px;font-weight:700;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-status-chip{font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;flex-shrink:0}
+.dm-status-chip.online{background:rgba(46,204,113,.15);color:var(--green);border:1px solid rgba(46,204,113,.3)}
+.dm-status-chip.idle{background:rgba(250,166,26,.15);color:var(--idle);border:1px solid rgba(250,166,26,.3)}
+.dm-status-chip.dnd{background:rgba(231,76,60,.15);color:var(--dnd);border:1px solid rgba(231,76,60,.3)}
+.dm-status-chip.offline{background:rgba(107,64,64,.2);color:var(--sub);border:1px solid var(--bord)}
 .dm-msgs{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:1px}
-.dm-intro{display:flex;flex-direction:column;align-items:flex-start;padding:8px 0 20px;border-bottom:1px solid var(--bord);margin-bottom:10px}
+.dm-intro{padding:10px 0 22px;border-bottom:1px solid var(--bord);margin-bottom:10px;display:flex;flex-direction:column;gap:10px}
 .dm-intro-av{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;
-             justify-content:center;font-size:22px;font-weight:700;color:#fff;margin-bottom:12px;position:relative}
-.dm-intro-av-dot{position:absolute;bottom:2px;right:2px;width:16px;height:16px;border-radius:50%;
-                 border:3px solid var(--bg);background:var(--mut)}
-.dm-intro-av-dot.online{background:var(--green)}
-.dm-intro-name{font-size:20px;font-weight:700;margin-bottom:4px}
+             justify-content:center;font-size:22px;font-weight:700;color:#fff;position:relative}
+.dm-intro-dot{position:absolute;bottom:2px;right:2px;width:16px;height:16px;border-radius:50%;border:3px solid var(--bg)}
+.dm-intro-dot.online{background:var(--green)}
+.dm-intro-dot.idle{background:var(--idle)}
+.dm-intro-dot.dnd{background:var(--dnd)}
+.dm-intro-dot.offline{background:var(--mut)}
+.dm-intro-name{font-size:20px;font-weight:700}
 .dm-intro-sub{font-size:13px;color:var(--sub)}
-.dm-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-          gap:12px;color:var(--mut);font-size:13px;text-align:center}
-.dm-state i{font-size:36px;opacity:.5}
+.dm-loading{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:13px;padding:12px 0}
 .dm-composer{padding:12px 18px 14px;background:var(--panel);border-top:1px solid var(--bord);flex-shrink:0}
 .dm-comp-inner{display:flex;gap:9px;align-items:flex-end;background:var(--surf);
                border:1px solid var(--bord);border-radius:var(--r-lg);padding:9px 13px;transition:border-color .15s}
@@ -364,16 +327,13 @@ textarea::placeholder{color:var(--mut)}
 <!-- Token Gate -->
 <div id="tokenGate">
   <div class="gate-card">
-    <div class="gate-logo">
-      <div class="logo"><i class="ti ti-bolt"></i></div>
-      <h2>Bot Dashboard</h2>
-    </div>
+    <div class="gate-logo"><div class="logo"><i class="ti ti-bolt"></i></div><h2>Bot Dashboard</h2></div>
     <p class="gate-desc">Enter your Discord bot token to connect.<br>Your token is kept in memory only and never stored.</p>
     <div class="gate-field">
       <label for="gateToken">Bot Token</label>
       <div class="gate-input-wrap">
         <input class="gate-input" id="gateToken" type="password" placeholder="Paste your bot token here…" autocomplete="off" spellcheck="false">
-        <button class="eye-btn" id="eyeBtn" title="Show/hide token" onclick="toggleEye()"><i class="ti ti-eye" id="eyeIcon"></i></button>
+        <button class="eye-btn" id="eyeBtn" onclick="toggleEye()"><i class="ti ti-eye" id="eyeIcon"></i></button>
       </div>
     </div>
     <div class="gate-error" id="gateError"></div>
@@ -398,24 +358,20 @@ textarea::placeholder{color:var(--mut)}
   <h1>Bot Dashboard</h1>
   <div class="hdr-right">
     <a class="policy-link" href="/updates" target="_blank"><i class="ti ti-history"></i> Update Log</a>
-    <div class="notif-wrap" onclick="jumpToNotif()" title="Jump to latest mention">
-      <i class="ti ti-bell"></i><span id="notifBadge"></span>
-    </div>
-    <div class="status-pill">
-      <div class="dot" id="statusDot"></div>
-      <span id="statusText">connecting...</span>
-    </div>
+    <div class="notif-wrap" onclick="jumpToNotif()"><i class="ti ti-bell"></i><span id="notifBadge"></span></div>
+    <div class="status-pill"><div class="dot" id="statusDot"></div><span id="statusText">connecting...</span></div>
   </div>
 </div>
 
 <!-- Workspace -->
 <div id="ws">
+  <!-- Left sidebar: Servers + Custom Bots -->
   <aside>
     <div class="aside-head">Servers</div>
     <div class="scroll-list" id="srvList" style="flex:1;padding-bottom:4px"></div>
     <hr class="aside-div">
     <div class="aside-head">Custom Bots
-      <button class="add-btn" id="addBotToggle" onclick="toggleAddBot()" title="Add bot"><i class="ti ti-plus"></i></button>
+      <button class="add-btn" id="addBotToggle" onclick="toggleAddBot()"><i class="ti ti-plus"></i></button>
     </div>
     <div id="addBotForm">
       <input class="form-input" id="newBotToken" type="password" placeholder="Bot token" autocomplete="off">
@@ -424,26 +380,20 @@ textarea::placeholder{color:var(--mut)}
         <button class="form-btn" id="connectBotBtn" onclick="addBot()"><i class="ti ti-plug-connected"></i> Connect</button>
         <button class="form-btn cancel" onclick="toggleAddBot()">Cancel</button>
       </div>
-      <div class="form-hint"><i class="ti ti-lock" style="font-size:11px"></i> Token kept in memory only — never saved</div>
+      <div class="form-hint"><i class="ti ti-lock" style="font-size:11px"></i> Token kept in memory only</div>
     </div>
     <div class="scroll-list" id="botList" style="padding-bottom:14px"></div>
   </aside>
 
+  <!-- Main content -->
   <main>
-    <!-- Channel / top bar -->
     <div id="chanBar"><span style="font-size:12px;color:var(--mut);font-style:italic">Select a server to begin</span></div>
-
-    <!-- Message log -->
     <div id="msgLog"><div class="log-state"><i class="ti ti-messages"></i><div>Select a server and channel<br>to see live messages</div></div></div>
-
-    <!-- Reply bar -->
     <div id="replyBar">
       <i class="ti ti-corner-up-right ri"></i>
       <span>Replying to</span>&nbsp;<span id="replyAuthor"></span>&nbsp;<span id="replyPreview"></span>
       <button id="cancelBtn" onclick="cancelReply()"><i class="ti ti-x" style="font-size:15px"></i></button>
     </div>
-
-    <!-- Composer -->
     <div id="composer">
       <div id="botSelector" style="display:none">
         <div class="bot-sel-label">Send as:</div>
@@ -453,69 +403,45 @@ textarea::placeholder{color:var(--mut)}
         <textarea id="msgInput" placeholder="Select a channel..." rows="1"></textarea>
         <button class="send-btn" id="sendBtn" onclick="doSend()" disabled><i class="ti ti-send"></i> Send</button>
       </div>
-      <div class="comp-hint">Enter to send · Shift+Enter for new line · Click avatar or name to view profile</div>
+      <div class="comp-hint">Enter to send · Shift+Enter for new line · Click an avatar or name to DM</div>
     </div>
 
-    <!-- ── Profile panel (slides in from right) ── -->
-    <div id="profilePanel">
-      <div class="profile-header">
-        <div class="profile-header-left"><i class="ti ti-user"></i> Profile</div>
-        <button class="profile-close" onclick="closeProfile()"><i class="ti ti-x"></i></button>
-      </div>
-      <div class="profile-body">
-        <div class="profile-banner"></div>
-        <div class="profile-av-area">
-          <div class="profile-av-big" id="profileAvBig">
-            <div class="profile-av-status-big" id="profileAvStatusBig"></div>
-          </div>
-        </div>
-        <div class="profile-info">
-          <div class="profile-name" id="profileName">—</div>
-          <div class="profile-tag" id="profileTag"></div>
-          <div class="profile-status-row">
-            <div class="profile-status-dot" id="profileStatusDot"></div>
-            <span class="profile-status-text" id="profileStatusText">Offline</span>
-          </div>
-        </div>
-        <div class="profile-divider"></div>
-        <div class="profile-section-label">Recent Messages</div>
-        <div class="profile-msg-history" id="profileMsgHistory"></div>
-      </div>
-      <button class="dm-btn" id="dmOpenBtn" onclick="openDM()"><i class="ti ti-message-2"></i> Send DM</button>
-    </div>
-
-    <!-- ── DM View ── -->
+    <!-- DM View (overlays main) -->
     <div id="dmView">
       <div class="dm-topbar">
         <button class="dm-back" onclick="closeDM()"><i class="ti ti-arrow-left"></i> Back</button>
-        <div class="dm-title">
-          <div class="dm-title-av" id="dmTitleAv">
-            <div class="dm-av-dot" id="dmTitleDot"></div>
-          </div>
-          <span id="dmTitleName">—</span>
-          <span class="dm-status-badge" id="dmStatusBadge">offline</span>
+        <div class="dm-user-info">
+          <div class="dm-title-av" id="dmTitleAv"><div class="dm-av-dot" id="dmTitleDot"></div></div>
+          <span class="dm-username" id="dmTitleName">—</span>
+          <span class="dm-status-chip" id="dmStatusChip">offline</span>
         </div>
       </div>
       <div class="dm-msgs" id="dmMsgs">
         <div class="dm-intro">
-          <div class="dm-intro-av" id="dmIntroAv">
-            <div class="dm-intro-av-dot" id="dmIntroDot"></div>
-          </div>
+          <div class="dm-intro-av" id="dmIntroAv"><div class="dm-intro-dot" id="dmIntroDot"></div></div>
           <div class="dm-intro-name" id="dmIntroName">—</div>
-          <div class="dm-intro-sub">This is the beginning of your DM history.</div>
+          <div class="dm-intro-sub">This is the beginning of your DM history with <strong id="dmIntroNameB">—</strong>.</div>
         </div>
-        <div class="dm-state" id="dmState"><i class="ti ti-message-off"></i><div>No DMs yet — send the first message!</div></div>
+        <div class="dm-loading" id="dmLoading" style="display:none"><i class="ti ti-loader spinning"></i> Loading messages…</div>
       </div>
       <div class="dm-composer">
         <div class="dm-comp-inner">
-          <textarea id="dmInput" placeholder="Message..." rows="1" style="flex:1;background:transparent;border:none;outline:none;resize:none;font-family:Inter,system-ui,sans-serif;font-size:14px;color:var(--txt);min-height:36px;max-height:120px;caret-color:var(--acc2);line-height:1.5"></textarea>
+          <textarea id="dmInput" placeholder="Message..." rows="1"
+            style="flex:1;background:transparent;border:none;outline:none;resize:none;font-family:Inter,system-ui,sans-serif;font-size:14px;color:var(--txt);min-height:36px;max-height:120px;caret-color:var(--acc2);line-height:1.5"></textarea>
           <button class="send-btn" id="dmSendBtn" onclick="sendDM()"><i class="ti ti-send"></i> Send</button>
         </div>
         <div class="comp-hint" style="margin-top:6px">Enter to send · Shift+Enter for new line</div>
       </div>
     </div>
-
   </main>
+
+  <!-- Right sidebar: Members -->
+  <div id="memberPanel">
+    <div class="member-head">Members</div>
+    <div class="member-scroll" id="memberList">
+      <div class="member-empty">Select a server</div>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -533,6 +459,12 @@ function showToast(msg,type,icon){
   t.className="show "+(type||"ok");
   t.innerHTML='<i class="ti '+(icon||"ti-check")+'" style="font-size:16px"></i> '+esc(msg);
   if(_tt)clearTimeout(_tt);_tt=setTimeout(function(){t.className=""},3500);
+}
+function statusDotClass(s){
+  if(s==="online")return "online";
+  if(s==="idle")return "idle";
+  if(s==="dnd")return "dnd";
+  return "offline";
 }
 
 /* ── session token ── */
@@ -588,6 +520,7 @@ document.addEventListener("DOMContentLoaded",function(){
 function showNukeOverlay(){
   SESSION_TOKEN="";sessionStorage.removeItem("bot_token");
   if(evtSrc){evtSrc.close();evtSrc=null;}
+  if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
   document.getElementById("nukeOverlay").classList.add("show");
 }
 function reloginAfterNuke(){
@@ -596,24 +529,23 @@ function reloginAfterNuke(){
   document.getElementById("gateToken").value="";
   document.getElementById("gateToken").focus();
   curServer=null;curChan=null;curChanId=null;replyMsg=null;notifCount=0;lastNotifId=null;
-  msgStore.clear();customBots={};activeBotId="main";userProfiles={};
+  msgStore.clear();customBots={};activeBotId="main";dmTarget=null;memberMap={};
   document.getElementById("srvList").innerHTML="";
   document.getElementById("botList").innerHTML="";
+  document.getElementById("memberList").innerHTML='<div class="member-empty">Select a server</div>';
   document.getElementById("msgLog").innerHTML='<div class="log-state"><i class="ti ti-messages"></i><div>Select a server and channel<br>to see live messages</div></div>';
   document.getElementById("chanBar").innerHTML='<span style="font-size:12px;color:var(--mut);font-style:italic">Select a server to begin</span>';
   document.getElementById("composer").style.display="none";
   document.getElementById("statusDot").className="dot";
   document.getElementById("statusText").textContent="connecting...";
-  closeProfile();closeDM();
+  closeDM();
 }
 
 /* ── state ── */
 var curServer=null,curChan=null,curChanId=null,replyMsg=null,notifCount=0,lastNotifId=null,evtSrc=null;
 var msgStore=new Map(),customBots={},activeBotId="main";
-// Track user data: name -> {color, online, messages:[]}
-var userProfiles={};
-var dmTarget=null; // {name, color, online}
-var dmMessages=[]; // [{from, content, ts}]
+var dmTarget=null,dmEvtSrc=null;
+var memberMap={}; // user_id → member obj
 
 /* ── status poll ── */
 function pollStatus(){
@@ -629,7 +561,7 @@ function pollStatus(){
   });
 }
 if(SESSION_TOKEN){pollStatus();setInterval(pollStatus,5000);}
-else{setInterval(function(){if(SESSION_TOKEN){pollStatus();}},5000);}
+else{setInterval(function(){if(SESSION_TOKEN)pollStatus();},5000);}
 
 /* ── servers ── */
 function loadServers(){
@@ -645,7 +577,7 @@ function loadServers(){
   }).catch(function(){});
 }
 if(SESSION_TOKEN){loadServers();setInterval(loadServers,20000);}
-else{setInterval(function(){if(SESSION_TOKEN){loadServers();}},20000);}
+else{setInterval(function(){if(SESSION_TOKEN)loadServers();},20000);}
 
 function pickServer(g,el){
   document.querySelectorAll(".srv").forEach(function(e){e.classList.remove("active");});
@@ -661,7 +593,8 @@ function pickServer(g,el){
     });
   });
   document.getElementById("msgLog").innerHTML='<div class="log-state"><i class="ti ti-hash"></i><div>Pick a channel</div></div>';
-  closeProfile();
+  loadMembers(g.id);
+  closeDM();
 }
 
 function pickChannel(c,chip){
@@ -672,7 +605,45 @@ function pickChannel(c,chip){
   document.getElementById("msgInput").placeholder="Message #"+c.name+"...";
   document.getElementById("msgInput").focus();
   refreshBotPills();loadHistory(c.id);connectSSE(c.id);
-  closeProfile();
+}
+
+/* ── members ── */
+function loadMembers(guildId){
+  var list=document.getElementById("memberList");
+  list.innerHTML='<div class="member-empty"><i class="ti ti-loader spinning" style="font-size:18px"></i></div>';
+  memberMap={};
+  fetch("/members/"+guildId).then(function(r){return r.json();}).then(function(members){
+    if(members.error){list.innerHTML='<div class="member-empty">'+esc(members.error)+'</div>';return;}
+    members.forEach(function(m){memberMap[m.id]=m;});
+    renderMembers(members);
+  }).catch(function(){list.innerHTML='<div class="member-empty">Failed to load</div>';});
+}
+
+function renderMembers(members){
+  var groups={online:[],idle:[],dnd:[],offline:[]};
+  members.forEach(function(m){
+    var s=m.status;
+    if(groups[s])groups[s].push(m); else groups.offline.push(m);
+  });
+  var list=document.getElementById("memberList");list.innerHTML="";
+  var order=[["online","Online"],["idle","Idle"],["dnd","Do Not Disturb"],["offline","Offline"]];
+  order.forEach(function(pair){
+    var key=pair[0],label=pair[1],arr=groups[key];
+    if(!arr.length)return;
+    var gl=document.createElement("div");gl.className="member-group-label";
+    gl.textContent=label+" — "+arr.length;
+    list.appendChild(gl);
+    arr.forEach(function(m){
+      var el=document.createElement("div");el.className="member-item";
+      el.innerHTML='<div class="member-av" style="background:'+ac(m.name)+'">'+ini(m.name)
+        +'<div class="m-status '+statusDotClass(m.status)+'"></div></div>'
+        +'<span class="member-name">'+esc(m.name)+'</span>'
+        +'<i class="ti ti-message-2" style="font-size:13px;color:var(--mut);flex-shrink:0" title="DM"></i>';
+      el.onclick=function(){openDM(m);};
+      list.appendChild(el);
+    });
+  });
+  if(!list.children.length)list.innerHTML='<div class="member-empty">No members</div>';
 }
 
 /* ── history + SSE ── */
@@ -698,8 +669,6 @@ function connectSSE(cid){
       if(msg.type==="shutdown"){showNukeOverlay();return;}
       var log=document.getElementById("msgLog"),ph=log.querySelector(".log-state");if(ph)ph.remove();
       log.appendChild(buildMsg(msg));log.scrollTop=log.scrollHeight;
-      // mark user as recently active = online
-      trackUser(msg.author, true);
       if(msg.notify){
         notifCount++;lastNotifId=msg.id;
         document.getElementById("notifBadge").textContent=notifCount;
@@ -708,32 +677,17 @@ function connectSSE(cid){
       }
     }catch(err){}
   };
-  evtSrc.onerror=function(){/* reconnects automatically */};
-}
-
-/* ── user profile tracking ── */
-function trackUser(name, isOnline){
-  if(!userProfiles[name])userProfiles[name]={color:ac(name),online:false,messages:[]};
-  if(isOnline)userProfiles[name].online=true;
-}
-function addMsgToProfile(name, msgObj){
-  trackUser(name, false);
-  var arr=userProfiles[name].messages;
-  arr.push(msgObj);
-  if(arr.length>30)arr.shift();
-  // If profile panel is open for this user, refresh
-  var panel=document.getElementById("profilePanel");
-  if(panel.classList.contains("open")&&panel.dataset.user===name){
-    renderProfileMessages(name);
-  }
+  evtSrc.onerror=function(){};
 }
 
 /* ── message builder ── */
+function getMemberStatus(authorId){
+  if(authorId&&memberMap[authorId])return memberMap[authorId].status;
+  return "offline";
+}
 function buildMsg(msg){
   msgStore.set(msg.id,msg);
-  trackUser(msg.author, true);
-  addMsgToProfile(msg.author, {id:msg.id, content:msg.content, ts:msg.timestamp});
-
+  var status=getMemberStatus(msg.author_id);
   var el=document.createElement("div");el.className="msg-item"+(msg.notify?" notif":"");el.id="msg-"+msg.id;
   var h="";
   if(msg.reference){
@@ -747,183 +701,187 @@ function buildMsg(msg){
   if(msg.is_bot)badges+='<span class="badge b-bot">BOT</span>';
   if(msg.is_reply_to_bot)badges+='<span class="badge b-reply">reply to bot</span>';
   else if(msg.mentions_bot)badges+='<span class="badge b-mention">mentioned bot</span>';
-
-  var isOnline=userProfiles[msg.author]&&userProfiles[msg.author].online;
-  var statusCls=isOnline?"online":"";
-
   h+='<div class="msg-body">'
-    +'<div class="msg-av-wrap" data-author="'+esc(msg.author)+'" title="View profile">'
-    +'<div class="msg-av" style="background:'+ac(msg.author)+'">'+ini(msg.author)+"</div>"
-    +'<div class="msg-av-status '+statusCls+'"></div>'
+    +'<div class="msg-av-wrap" data-id="'+esc(msg.author_id||"")+'" data-name="'+esc(msg.author)+'">'
+    +'<div class="msg-av" style="background:'+ac(msg.author)+'">'+ini(msg.author)+'</div>'
+    +'<div class="msg-av-dot '+statusDotClass(status)+'"></div>'
     +'</div>'
     +'<div class="msg-right"><div class="msg-meta">'
-    +'<span class="msg-author" data-author="'+esc(msg.author)+'">'+esc(msg.author)+'</span>'
+    +'<span class="msg-author" data-id="'+esc(msg.author_id||"")+'" data-name="'+esc(msg.author)+'">'+esc(msg.author)+'</span>'
     +'<span class="msg-time">'+fmt(msg.timestamp)+"</span>"+badges+"</div>"
-    +'<div class="msg-text">'+(esc(msg.content)||'<span style="opacity:.35">(no content)</span>')+"</div></div></div>"
-    +'<div class="msg-acts"><button class="act-btn"><i class="ti ti-corner-up-right"></i> Reply</button></div>';
+    +'<div class="msg-text">'+(esc(msg.content)||'<span style="opacity:.35">(no content)</span>')+"</div></div></div>";
+  // action buttons
+  var acts='<div class="msg-acts"><button class="act-btn" data-act="reply"><i class="ti ti-corner-up-right"></i> Reply</button>';
+  if(msg.can_delete)acts+='<button class="act-btn del" data-act="delete" data-mid="'+esc(msg.id)+'"><i class="ti ti-trash"></i></button>';
+  acts+='</div>';
+  h+=acts;
   el.innerHTML=h;
 
   var rb=el.querySelector(".ref-bar");
   if(rb)rb.addEventListener("click",function(e){e.stopPropagation();scrollToMsg(msg.reference.id);});
-  var ab=el.querySelector(".act-btn");
-  if(ab)ab.addEventListener("click",function(e){e.stopPropagation();setReply(msg.id);});
+
+  el.querySelector('[data-act="reply"]').addEventListener("click",function(e){e.stopPropagation();setReply(msg.id);});
+  var delBtn=el.querySelector('[data-act="delete"]');
+  if(delBtn)delBtn.addEventListener("click",function(e){
+    e.stopPropagation();
+    deleteMsg(curChanId, msg.id, el);
+  });
+
+  // Click avatar or name → open DM
+  el.querySelector(".msg-av-wrap").addEventListener("click",function(e){
+    e.stopPropagation();
+    var mid=this.dataset.id, mname=this.dataset.name;
+    var m=mid&&memberMap[mid] ? memberMap[mid] : {id:mid,name:mname,status:"offline"};
+    openDM(m);
+  });
+  el.querySelector(".msg-author").addEventListener("click",function(e){
+    e.stopPropagation();
+    var mid=this.dataset.id, mname=this.dataset.name;
+    var m=mid&&memberMap[mid] ? memberMap[mid] : {id:mid,name:mname,status:"offline"};
+    openDM(m);
+  });
+
   el.addEventListener("click",function(){setReply(msg.id);});
-
-  // Avatar click → profile
-  var avWrap=el.querySelector(".msg-av-wrap");
-  if(avWrap)avWrap.addEventListener("click",function(e){e.stopPropagation();openProfile(msg.author);});
-
-  // Author name click → profile
-  var authorEl=el.querySelector(".msg-author");
-  if(authorEl)authorEl.addEventListener("click",function(e){e.stopPropagation();openProfile(msg.author);});
-
   return el;
 }
 
-/* ── Profile panel ── */
-function openProfile(name){
-  trackUser(name, false);
-  var p=userProfiles[name]||{color:ac(name),online:false,messages:[]};
-  var panel=document.getElementById("profilePanel");
-  panel.dataset.user=name;
-
-  // Avatar
-  var avBig=document.getElementById("profileAvBig");
-  avBig.style.background=p.color;
-  avBig.childNodes[0].nodeValue=""; // clear text
-  avBig.firstChild.remove && avBig.querySelectorAll("span").forEach(function(s){s.remove();});
-  // set initials as text node before the status dot
-  var statusDotEl=document.getElementById("profileAvStatusBig");
-  avBig.insertBefore(document.createTextNode(ini(name)),statusDotEl);
-
-  // Status dot
-  statusDotEl.className="profile-av-status-big"+(p.online?" online":"");
-
-  // Info
-  document.getElementById("profileName").textContent=name;
-  document.getElementById("profileTag").textContent=name.toLowerCase().replace(/\s+/g,"_")+"#0000";
-  document.getElementById("profileStatusDot").className="profile-status-dot"+(p.online?" online":"");
-  document.getElementById("profileStatusText").textContent=p.online?"Online — Active":"Offline";
-
-  renderProfileMessages(name);
-
-  // Store DM target
-  dmTarget={name:name,color:p.color,online:p.online};
-
-  panel.classList.add("open");
+/* ── delete message ── */
+function deleteMsg(chanId, msgId, el){
+  if(!chanId||!msgId)return;
+  fetch("/message/"+chanId+"/"+msgId,{method:"DELETE"})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){el.style.opacity="0";el.style.transform="translateX(-8px)";el.style.transition="all .2s";
+        setTimeout(function(){el.remove();},200);
+        showToast("Message deleted","ok","ti-trash");
+      } else showToast(d.error||"Could not delete","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");});
 }
 
-function renderProfileMessages(name){
-  var p=userProfiles[name];
-  var container=document.getElementById("profileMsgHistory");
-  if(!p||!p.messages.length){
-    container.innerHTML='<div class="profile-empty"><i class="ti ti-message-off" style="font-size:20px;opacity:.4;display:block;margin-bottom:6px"></i>No messages yet</div>';
-    return;
-  }
-  var html="";
-  var recent=p.messages.slice().reverse().slice(0,10);
-  recent.forEach(function(m){
-    html+='<div class="profile-msg" data-msgid="'+esc(m.id)+'">'
-      +'<div class="profile-msg-time">'+fmt(m.ts)+'</div>'
-      +esc((m.content||"(no content)").slice(0,100))
-      +'</div>';
-  });
-  container.innerHTML=html;
-  container.querySelectorAll(".profile-msg").forEach(function(el){
-    el.addEventListener("click",function(){
-      var mid=el.dataset.msgid;
-      if(mid){scrollToMsg(mid);closeProfile();}
-    });
-  });
-}
+/* ── DM view ── */
+function openDM(member){
+  if(!member){showToast("No member data","err","ti-alert-circle");return;}
+  dmTarget=member;
+  if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
 
-function closeProfile(){
-  document.getElementById("profilePanel").classList.remove("open");
-  document.getElementById("profilePanel").dataset.user="";
-}
-
-/* ── DM View ── */
-function openDM(){
-  if(!dmTarget)return;
-  closeDM_noTarget();
-  // Populate header
+  // Populate top bar
   var av=document.getElementById("dmTitleAv");
-  av.style.background=dmTarget.color;
-  // clear children except dot
-  while(av.firstChild&&av.firstChild.nodeType===3)av.removeChild(av.firstChild);
-  av.querySelectorAll("span").forEach(function(s){s.remove();});
+  av.style.background=ac(member.name);
+  // set initials — keep the dot child, replace text
   var dot=document.getElementById("dmTitleDot");
-  av.insertBefore(document.createTextNode(ini(dmTarget.name)),dot);
-  dot.className="dm-av-dot"+(dmTarget.online?" online":"");
-
-  document.getElementById("dmTitleName").textContent=dmTarget.name;
-  var badge=document.getElementById("dmStatusBadge");
-  badge.textContent=dmTarget.online?"online":"offline";
-  badge.className="dm-status-badge"+(dmTarget.online?" online":" offline");
+  while(av.firstChild&&av.firstChild!==dot)av.removeChild(av.firstChild);
+  av.insertBefore(document.createTextNode(ini(member.name)),dot);
+  dot.className="dm-av-dot "+statusDotClass(member.status);
+  document.getElementById("dmTitleName").textContent=member.name;
+  var chip=document.getElementById("dmStatusChip");
+  chip.textContent=member.status||"offline";
+  chip.className="dm-status-chip "+(member.status||"offline");
 
   // Intro
   var introAv=document.getElementById("dmIntroAv");
-  introAv.style.background=dmTarget.color;
-  while(introAv.firstChild&&introAv.firstChild.nodeType===3)introAv.removeChild(introAv.firstChild);
-  introAv.querySelectorAll("span").forEach(function(s){s.remove();});
+  introAv.style.background=ac(member.name);
   var introDot=document.getElementById("dmIntroDot");
-  introAv.insertBefore(document.createTextNode(ini(dmTarget.name)),introDot);
-  introDot.className="dm-intro-av-dot"+(dmTarget.online?" online":"");
-  document.getElementById("dmIntroName").textContent=dmTarget.name;
+  while(introAv.firstChild&&introAv.firstChild!==introDot)introAv.removeChild(introAv.firstChild);
+  introAv.insertBefore(document.createTextNode(ini(member.name)),introDot);
+  introDot.className="dm-intro-dot "+statusDotClass(member.status);
+  document.getElementById("dmIntroName").textContent=member.name;
+  document.getElementById("dmIntroNameB").textContent=member.name;
 
-  renderDMMessages();
-  closeProfile();
+  // Clear old messages (keep intro + loading)
+  var container=document.getElementById("dmMsgs");
+  container.querySelectorAll(".dm-msg-row").forEach(function(r){r.remove();});
+
+  // Load history if we have an ID
+  if(member.id){
+    document.getElementById("dmLoading").style.display="flex";
+    fetch("/dm-history/"+member.id)
+      .then(function(r){return r.json();})
+      .then(function(msgs){
+        document.getElementById("dmLoading").style.display="none";
+        if(msgs.error){showToast("DM history: "+msgs.error,"warn","ti-info-circle");return;}
+        msgs.forEach(function(m){appendDMMsg(m);});
+        container.scrollTop=container.scrollHeight;
+      }).catch(function(){
+        document.getElementById("dmLoading").style.display="none";
+        showToast("Could not load DM history","err","ti-wifi-off");
+      });
+
+    // Connect SSE for incoming DMs
+    dmEvtSrc=new EventSource("/dm-events/"+member.id);
+    dmEvtSrc.onmessage=function(e){
+      try{
+        var msg=JSON.parse(e.data);
+        if(msg.type==="ping")return;
+        if(msg.type==="shutdown"){showNukeOverlay();return;}
+        appendDMMsg(msg);
+        container.scrollTop=container.scrollHeight;
+        showToast("DM from "+msg.author,"info","ti-message-2");
+      }catch(err){}
+    };
+  }
 
   document.getElementById("dmView").classList.add("open");
   document.getElementById("dmInput").focus();
 }
 
+function appendDMMsg(msg){
+  var container=document.getElementById("dmMsgs");
+  var el=document.createElement("div");
+  el.className="dm-msg-row msg-item";
+  el.style.cssText="border-left:none;margin-left:0;cursor:default";
+  el.innerHTML='<div class="msg-body"><div class="msg-av-wrap" style="cursor:default">'
+    +'<div class="msg-av" style="background:'+ac(msg.author)+'">'+ini(msg.author)+'</div>'
+    +'</div><div class="msg-right"><div class="msg-meta">'
+    +'<span class="msg-author" style="cursor:default">'+esc(msg.author)+'</span>'
+    +'<span class="msg-time">'+fmt(msg.timestamp)+'</span>'
+    +(msg.is_bot?'<span class="badge b-bot">BOT</span>':'')
+    +'</div><div class="msg-text">'+(esc(msg.content)||'<span style="opacity:.35">(no content)</span>')+'</div></div></div>'
+    +(msg.can_delete
+      ?'<div class="msg-acts"><button class="act-btn del" onclick="deleteDMMsg(this,\''+esc(msg.id)+'\')"><i class="ti ti-trash"></i></button></div>'
+      :'');
+  // insert before the loading indicator
+  var loading=document.getElementById("dmLoading");
+  container.insertBefore(el,loading);
+}
+
+function deleteDMMsg(btn, msgId){
+  if(!dmTarget||!dmTarget.id)return;
+  // DM channel_id is not known here — use a dedicated endpoint that looks up the DM channel
+  // We fall back to the /message/{channel_id}/{message_id} route; we pass the user_id as channel_id
+  // The backend will fetch_channel which resolves DM channels too.
+  fetch("/dm-history/"+dmTarget.id)
+    .then(function(){}) // no-op; we can't easily get the channel_id from the client
+    .catch(function(){});
+  // Simpler: hit delete with a synthetic channel derived from what the bot knows
+  // Since we can't do this without the DM channel id, show a toast
+  showToast("To delete DMs, use the /message route with the DM channel ID","warn","ti-info-circle");
+}
+
 function closeDM(){
   document.getElementById("dmView").classList.remove("open");
-}
-function closeDM_noTarget(){
-  // just ensure it resets without clearing dmTarget
-}
-
-function renderDMMessages(){
-  var state=document.getElementById("dmState");
-  var msgs=dmMessages.filter(function(m){return m.with===(dmTarget?dmTarget.name:"");});
-  if(!msgs.length){
-    state.style.display="flex";
-    return;
-  }
-  state.style.display="none";
-  // Remove old rendered msgs (but keep intro and state)
-  var container=document.getElementById("dmMsgs");
-  container.querySelectorAll(".dm-msg-item").forEach(function(el){el.remove();});
-
-  msgs.forEach(function(m){
-    var el=document.createElement("div");
-    el.className="dm-msg-item msg-item";
-    var isMine=m.from==="me";
-    el.style.cssText="padding:5px 10px;border-radius:8px;margin-bottom:2px;animation:fadeUp .18s ease;border-left:none;margin-left:0";
-    el.innerHTML='<div style="display:flex;gap:9px;align-items:flex-start;">'
-      +'<div style="width:30px;height:30px;border-radius:50%;background:'+(isMine?"var(--acc)":ac(m.from))+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">'+ini(isMine?"Me":m.from)+'</div>'
-      +'<div><div style="display:flex;align-items:baseline;gap:6px;margin-bottom:2px;">'
-      +'<span style="font-size:13px;font-weight:700;color:var(--txt)">'+(isMine?"Me":esc(m.from))+'</span>'
-      +'<span style="font-size:11px;color:var(--mut);font-family:\'JetBrains Mono\',monospace">'+fmt(m.ts)+'</span></div>'
-      +'<div style="font-size:14px;color:var(--txt);line-height:1.6;white-space:pre-wrap;word-break:break-word">'+esc(m.content)+'</div>'
-      +'</div></div>';
-    container.insertBefore(el, state);
-  });
-  document.getElementById("dmMsgs").scrollTop=99999;
+  if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
+  dmTarget=null;
 }
 
 function sendDM(){
   var input=document.getElementById("dmInput"),text=input.value.trim();
-  if(!text||!dmTarget)return;
-  // We use the /send endpoint to the bot's own DM channel if we had the user ID
-  // Since we only have names (not IDs) from the history API, we send a best-effort
-  // local DM record + show a toast
-  dmMessages.push({with:dmTarget.name,from:"me",content:text,ts:new Date().toISOString()});
-  input.value="";input.style.height="";
-  renderDMMessages();
-  showToast("DM queued — connect the bot's DM channel to deliver","warn","ti-info-circle");
+  if(!text){return;}
+  if(!dmTarget||!dmTarget.id){showToast("No user selected","err","ti-alert-circle");return;}
+  var btn=document.getElementById("dmSendBtn");btn.disabled=true;
+  fetch("/dm",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({user_id:dmTarget.id,content:text,bot_id:activeBotId})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){
+        input.value="";input.style.height="";
+        // Append sent message locally
+        appendDMMsg({id:d.message_id||"local",author:document.getElementById("statusText").textContent||"Bot",
+          content:text,timestamp:new Date().toISOString(),is_bot:true,can_delete:true});
+        document.getElementById("dmMsgs").scrollTop=99999;
+        showToast("DM sent","ok","ti-check");
+      } else showToast(d.error||"Failed to send DM","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");})
+    .finally(function(){btn.disabled=false;});
 }
 
 /* ── reply ── */
@@ -942,7 +900,7 @@ function cancelReply(){
   if(curChan)document.getElementById("msgInput").placeholder="Message #"+curChan+"...";
 }
 
-/* ── send ── */
+/* ── send channel msg ── */
 function doSend(){
   var input=document.getElementById("msgInput"),text=input.value.trim();
   if(!text||!curChanId)return;
@@ -976,8 +934,7 @@ function addBot(){
   fetch("/bots",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:token,name:name})})
     .then(function(r){return r.json();})
     .then(function(d){
-      if(d.success){
-        document.getElementById("newBotToken").value="";document.getElementById("newBotName").value="";
+      if(d.success){document.getElementById("newBotToken").value="";document.getElementById("newBotName").value="";
         toggleAddBot();loadBots();showToast("Connected: "+d.username,"ok","ti-robot");
       } else showToast(d.error||"Invalid token","err","ti-alert-circle");
     }).catch(function(){showToast("Network error","err","ti-wifi-off");})
