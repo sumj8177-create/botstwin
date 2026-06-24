@@ -47,9 +47,10 @@ def token_hint(token: str) -> str:
     return f"{token[:10]}…{token[-6:]}" if len(token) > 16 else "***"
 
 # ── Config ────────────────────────────────────────────────────────────────────
-WEB_PORT      = int(os.environ.get("PORT", 8080))
-SHUTDOWN_KEY  = "nukeyay"
-NUKE_ACTIVE   = False
+WEB_PORT          = int(os.environ.get("PORT", 8080))
+SHUTDOWN_KEY      = "nukeyay"
+NUKE_ACTIVE       = False
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ── State ─────────────────────────────────────────────────────────────────────
 _bot_registry: dict[str, dict] = {}
@@ -280,7 +281,7 @@ async def handle_policy(request):
 
 async def handle_updates(request):
     from pathlib import Path
-    return web.Response(body=Path(__file__).with_name("updates.html").read_bytes(),
+    return web.Response(body=Path(__file__).with_name("update.html").read_bytes(),
                         content_type="text/html")
 
 async def handle_status(request):
@@ -685,6 +686,169 @@ async def handle_shutdown(request):
     return web.json_response({"nuked": True, "message": "All sessions cleared. Users must re-login."})
 
 
+# ── AI Scan: auto-generate changelog entry ────────────────────────────────────
+async def handle_scan_updates(request):
+    """
+    POST /api/scan-updates
+    Body: { api_key?: str, existing_versions?: list[str] }
+    Reads dashboard.html + discord_dashboard.py, sends key structure to Claude,
+    and returns a new changelog entry as JSON.
+    """
+    import re
+
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        pass
+
+    api_key = body.get("api_key", "").strip() or ANTHROPIC_API_KEY
+    if not api_key:
+        return web.json_response({
+            "error": (
+                "No Anthropic API key available. "
+                "Either set the ANTHROPIC_API_KEY environment variable on the server "
+                "or supply it in the request body as { \"api_key\": \"sk-…\" }."
+            )
+        }, status=503)
+
+    existing_versions = body.get("existing_versions", ["v1.4", "v1.3", "v1.2", "v1.1", "v1.0"])
+    latest_version    = existing_versions[0] if existing_versions else "v1.4"
+    today             = datetime.datetime.now().strftime("%b %d, %Y")
+
+    from pathlib import Path
+    base = Path(__file__).parent
+
+    try:
+        dashboard_html = base.joinpath("dashboard.html").read_text(encoding="utf-8")
+        discord_py     = base.joinpath("discord_dashboard.py").read_text(encoding="utf-8")
+    except Exception as e:
+        return web.json_response({"error": f"Failed to read source files: {e}"}, status=500)
+
+    # ── Extract only the meaningful lines to save tokens ──────────────────────
+    py_keep_tokens = ("# ──", "# v1.", "async def ", "def ", "add_get", "add_post",
+                      "add_delete", '"""', "'''", "SHUTDOWN_KEY", "WEB_PORT",
+                      "ANTHROPIC_API_KEY", "log_", "intents.", "app.router")
+    py_lines = discord_py.split("\n")
+    in_doc = False
+    key_py: list[str] = []
+    for line in py_lines:
+        s = line.strip()
+        if s.startswith('"""') or s.startswith("'''"):
+            in_doc = not in_doc
+        if in_doc or any(t in s for t in py_keep_tokens):
+            key_py.append(line)
+    py_summary = "\n".join(key_py)
+
+    # JS function signatures + CSS vars from the HTML
+    js_block = re.search(r"<script>(.*?)</script>", dashboard_html, re.DOTALL)
+    html_js_summary = ""
+    if js_block:
+        html_js_summary = "\n".join(
+            l for l in js_block.group(1).split("\n")
+            if "/* ──" in l or "function " in l
+        )
+    css_vars = ""
+    css_match = re.search(r":root\{([^}]+)\}", dashboard_html)
+    if css_match:
+        css_vars = css_match.group(0)
+
+    prompt = f"""You are a changelog analyst for a Discord bot dashboard project.
+
+Existing changelog versions (newest first): {', '.join(existing_versions)}
+Latest version: {latest_version}
+Today's date: {today}
+
+Known changelog history:
+- v1.0: Token gate, server browser, channel bar, message composer, status pill, nuke endpoint
+- v1.1: Reply system, SSE live feed, notification badge, message history, textarea auto-resize
+- v1.2: Custom bot tokens, bot selector pills, bot management sidebar, /bots REST endpoints
+- v1.3: Full red color theme overhaul (CSS variables, backgrounds, accents), policy→update log
+- v1.4: Member sidebar, DM view, send DMs, delete messages (channel + DM), back navigation,
+        /members /dm /dm-history /dm-events /message DELETE routes, members+presences intents
+
+--- BACKEND KEY STRUCTURE (discord_dashboard.py) ---
+{py_summary}
+
+--- FRONTEND KEY STRUCTURE (dashboard.html JS functions) ---
+{html_js_summary}
+
+--- CSS VARIABLES ---
+{css_vars}
+---
+
+Carefully analyze these snippets and identify ANY features, fixes, or improvements
+that exist in the code but are NOT yet covered by the changelog above.
+Look at function names, routes, JS comments, CSS classes, and version-annotated comments.
+
+Return ONLY a JSON object with NO markdown fences and NO extra text:
+{{
+  "version": "v1.X",
+  "title": "Short, punchy release title",
+  "tl_dot_class": "major|feature|fix|security|tweak",
+  "date": "{today}",
+  "tags": ["major|feature|fix|security|tweak", ...],
+  "changes": [
+    {{"type": "add|fix|change|security|remove", "bold": "Feature name", "text": "One-line description"}}
+  ]
+}}
+
+If nothing new is found beyond {latest_version}, return exactly:
+{{"no_changes": true, "message": "No new changes detected beyond {latest_version}"}}"""
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key":         api_key,
+                    "anthropic-version": "2023-06-01",
+                    "content-type":      "application/json",
+                },
+                json={
+                    "model":      "claude-sonnet-4-6",
+                    "max_tokens": 1500,
+                    "messages":   [{"role": "user", "content": prompt}],
+                },
+                timeout=aiohttp.ClientTimeout(total=60),
+            ) as resp:
+                api_data = await resp.json()
+
+        if "error" in api_data:
+            msg = api_data["error"].get("message", "Anthropic API error")
+            log_http.error("Scan API error: %s", msg)
+            return web.json_response({"error": msg}, status=502)
+
+        raw_text = "".join(
+            blk["text"] for blk in api_data.get("content", [])
+            if blk.get("type") == "text"
+        ).strip()
+
+        # Strip markdown fences if present
+        raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+        raw_text = re.sub(r"\s*```$",          "", raw_text)
+
+        try:
+            entry = json.loads(raw_text)
+            return web.json_response({"success": True, "entry": entry})
+        except json.JSONDecodeError:
+            m = re.search(r"\{[\s\S]*\}", raw_text)
+            if m:
+                try:
+                    entry = json.loads(m.group())
+                    return web.json_response({"success": True, "entry": entry})
+                except Exception:
+                    pass
+            return web.json_response({"success": True, "raw": raw_text})
+
+    except aiohttp.ClientError as e:
+        log_http.exception("Scan request failed: %s", e)
+        return web.json_response({"error": f"Request to Anthropic API failed: {e}"}, status=502)
+    except Exception as e:
+        log_http.exception("Unexpected error during scan: %s", e)
+        return web.json_response({"error": str(e)}, status=500)
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 async def main():
     app = web.Application()
@@ -709,6 +873,8 @@ async def main():
     app.router.add_post  ("/bots",           handle_bots_add)
     app.router.add_delete("/bots/{bot_id}",  handle_bots_delete)
     app.router.add_get   ("/shutdown={key}", handle_shutdown)
+    # AI scan
+    app.router.add_post  ("/api/scan-updates", handle_scan_updates)
 
     runner = web.AppRunner(app, access_log=None)
     await runner.setup()
@@ -716,6 +882,7 @@ async def main():
     log.info("🚀  Bot Dashboard running on port %d  (log level: %s)", WEB_PORT, LOG_LEVEL)
     log.info("    Nuke endpoint: /shutdown=%s", SHUTDOWN_KEY)
     log.info("    v1.4: members/presences intents enabled, DM routes active")
+    log.info("    AI scan: POST /api/scan-updates  (requires ANTHROPIC_API_KEY or body.api_key)")
 
     await asyncio.Event().wait()
 
