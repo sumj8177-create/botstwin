@@ -122,6 +122,77 @@ nav{position:sticky;top:0;z-index:100;background:rgba(23,13,13,.93);backdrop-fil
 
 footer{text-align:center;padding:30px;font-size:12px;color:var(--mut);border-top:1px solid var(--bord);margin-top:20px}
 footer strong{color:var(--sub)}
+
+/* ── scan button ── */
+.scan-btn{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--acc2);
+          padding:5px 13px;border:1px solid rgba(192,57,43,.4);border-radius:20px;
+          background:var(--adim);cursor:pointer;transition:all .15s;font-family:Inter,sans-serif}
+.scan-btn:hover{border-color:var(--acc);background:rgba(192,57,43,.22);color:#fff}
+
+/* ── scan overlay ── */
+#scanOverlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:190;
+             opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(3px)}
+#scanOverlay.show{opacity:1;pointer-events:all}
+
+/* ── scan panel ── */
+#scanPanel{position:fixed;top:0;right:-460px;width:440px;max-width:100vw;height:100%;
+           background:var(--card);border-left:1px solid var(--bord);z-index:200;
+           display:flex;flex-direction:column;transition:right .28s cubic-bezier(.4,0,.2,1);
+           box-shadow:-16px 0 50px rgba(0,0,0,.6)}
+#scanPanel.open{right:0}
+.sp-head{display:flex;align-items:center;gap:10px;padding:16px 18px;
+         border-bottom:1px solid var(--bord);flex-shrink:0}
+.sp-head h3{font-size:15px;font-weight:700;flex:1}
+.sp-icon{width:32px;height:32px;border-radius:8px;background:var(--adim);border:1px solid rgba(192,57,43,.3);
+         display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sp-icon i{font-size:16px;color:var(--acc2)}
+.sp-close{background:none;border:none;color:var(--mut);cursor:pointer;padding:5px;
+          border-radius:6px;display:flex;align-items:center;transition:all .12s}
+.sp-close:hover{background:var(--surf);color:var(--txt)}
+.sp-body{flex:1;overflow-y:auto;padding:18px}
+.sp-section{margin-bottom:20px}
+.sp-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+          color:var(--mut);margin-bottom:6px}
+.sp-hint{font-size:11px;color:var(--mut);line-height:1.6;margin-bottom:12px}
+.sp-input{width:100%;background:var(--surf);border:1px solid var(--bord);border-radius:8px;
+          padding:9px 12px;font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--txt);
+          outline:none;transition:border-color .15s}
+.sp-input:focus{border-color:var(--acc)}
+.sp-input::placeholder{color:var(--mut);font-family:Inter,sans-serif}
+.sp-scan-btn{width:100%;padding:10px;background:var(--acc);border:none;border-radius:8px;
+             color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:700;
+             cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+             transition:all .15s;margin-top:4px}
+.sp-scan-btn:hover:not(:disabled){background:var(--acc2)}
+.sp-scan-btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* scan states */
+.sp-state{display:none;align-items:center;gap:10px;padding:14px;border-radius:8px;
+          font-size:13px;margin-bottom:16px}
+.sp-state.loading{display:flex;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.2);color:var(--acc2)}
+.sp-state.err{display:flex;background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.25);color:#ed8587}
+.sp-state.nochange{display:flex;background:rgba(46,204,113,.07);border:1px solid rgba(46,204,113,.2);color:#6be09a}
+.sp-state i{font-size:18px;flex-shrink:0}
+
+/* scan results */
+#scanResults{display:none}
+.sp-results-head{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+                 color:var(--mut);margin-bottom:10px}
+#scanPreview .update-card{border-color:var(--acc);box-shadow:0 0 20px rgba(192,57,43,.15)}
+.sp-actions{display:flex;gap:8px;margin-top:14px}
+.sp-act-btn{flex:1;padding:9px 12px;border-radius:8px;font-family:Inter,sans-serif;
+            font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;
+            justify-content:center;gap:6px;transition:all .15s}
+.sp-act-btn.primary{background:var(--green);border:none;color:#0a1f12}
+.sp-act-btn.primary:hover{background:#39e07e}
+.sp-act-btn.secondary{background:none;border:1px solid var(--bord);color:var(--sub)}
+.sp-act-btn.secondary:hover{border-color:var(--acc);color:var(--txt)}
+
+/* added banner */
+#addedBanner{position:fixed;bottom:24px;right:24px;padding:10px 18px;background:#0f2a1a;
+             border:1px solid var(--green);border-radius:10px;color:#6be09a;font-size:13px;
+             font-weight:500;display:flex;align-items:center;gap:8px;z-index:300;
+             opacity:0;transition:opacity .3s;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 </style>
 </head>
 <body>
@@ -133,6 +204,7 @@ footer strong{color:var(--sub)}
   </div>
   <div class="nav-right">
     <div class="live-badge"><div class="live-dot"></div> Live</div>
+    <button class="scan-btn" onclick="openScan()"><i class="ti ti-robot"></i> Scan for Changes</button>
     <a href="/" class="nav-back"><i class="ti ti-arrow-left"></i> Back to Dashboard</a>
   </div>
 </nav>
@@ -302,43 +374,317 @@ footer strong{color:var(--sub)}
   <strong>Bot Dashboard</strong> &mdash; Changelog &middot; All times local &middot; Newest first
 </footer>
 
-<script>
-var currentFilter = 'all';
+<!-- ── Scan overlay ── -->
+<div id="scanOverlay" onclick="closeScan()"></div>
 
-function setFilter(f) {
-  currentFilter = f;
-  document.querySelectorAll('.ftag').forEach(function(t) {
-    t.classList.toggle('active', t.dataset.filter === f);
-  });
+<!-- ── Scan panel ── -->
+<div id="scanPanel">
+  <div class="sp-head">
+    <div class="sp-icon"><i class="ti ti-robot"></i></div>
+    <h3>AI Changelog Scanner</h3>
+    <button class="sp-close" onclick="closeScan()"><i class="ti ti-x" style="font-size:18px"></i></button>
+  </div>
+  <div class="sp-body">
+
+    <div class="sp-section">
+      <p class="sp-hint">Scans <code>dashboard.html</code> and <code>discord_dashboard.py</code>
+      using Claude to detect new features, fixes, and changes not yet in this log.
+      The entry is previewed below before you add it.</p>
+    </div>
+
+    <div class="sp-section">
+      <div class="sp-label">Anthropic API Key <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+      <input class="sp-input" id="scanApiKey" type="password" placeholder="sk-ant-… — leave empty if set via env var">
+      <div style="font-size:10.5px;color:var(--mut);margin-top:5px">
+        <i class="ti ti-lock" style="font-size:11px"></i>
+        Used only for this scan request. Set <code>ANTHROPIC_API_KEY</code> on the server to skip this field.
+      </div>
+    </div>
+
+    <button class="sp-scan-btn" id="scanStartBtn" onclick="runScan()">
+      <i class="ti ti-sparkles"></i> Start Scan
+    </button>
+
+    <!-- states -->
+    <div style="margin-top:16px">
+      <div class="sp-state loading" id="scanLoading">
+        <i class="ti ti-loader spinning"></i>
+        Analyzing source files with Claude…
+      </div>
+      <div class="sp-state err" id="scanError">
+        <i class="ti ti-alert-circle"></i>
+        <span id="scanErrorMsg">Unknown error</span>
+      </div>
+      <div class="sp-state nochange" id="scanNoChange">
+        <i class="ti ti-check"></i>
+        <span id="scanNoChangeMsg">No new changes detected</span>
+      </div>
+    </div>
+
+    <!-- results -->
+    <div id="scanResults">
+      <div class="sp-results-head">Detected Entry Preview</div>
+      <div id="scanPreview"></div>
+      <div class="sp-actions">
+        <button class="sp-act-btn primary" onclick="addToTimeline()">
+          <i class="ti ti-plus"></i> Add to Timeline
+        </button>
+        <button class="sp-act-btn secondary" id="copyHtmlBtn" onclick="copyScanHTML()">
+          <i class="ti ti-copy"></i> Copy HTML
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- added banner -->
+<div id="addedBanner"><i class="ti ti-check"></i> Entry added to timeline</div>
+
+<script>
+/* ── helpers ── */
+function esc(t){return(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+var ICON_MAP   = {add:"plus",fix:"tool",change:"refresh",security:"shield-lock",remove:"minus"};
+var COLOR_MAP  = {add:"add",fix:"fix",change:"change",security:"security",remove:"remove"};
+
+/* ── filter & search ── */
+var currentFilter = "all";
+function setFilter(f){
+  currentFilter=f;
+  document.querySelectorAll(".ftag").forEach(function(t){t.classList.toggle("active",t.dataset.filter===f);});
   applyFilters();
 }
-
-function applyFilters() {
-  var q = document.getElementById('searchInput').value.toLowerCase().trim();
-  var blocks = document.querySelectorAll('.update-block');
-  var visible = 0;
-  blocks.forEach(function(b) {
-    var tags = (b.dataset.tags || '').split(' ');
-    var tagMatch = currentFilter === 'all' || tags.indexOf(currentFilter) !== -1;
-    var textMatch = !q || b.textContent.toLowerCase().indexOf(q) !== -1;
-    var show = tagMatch && textMatch;
-    b.classList.toggle('hidden', !show);
-    if (show) visible++;
+function applyFilters(){
+  var q=document.getElementById("searchInput").value.toLowerCase().trim();
+  var blocks=document.querySelectorAll(".update-block");
+  var visible=0;
+  blocks.forEach(function(b){
+    var tags=(b.dataset.tags||"").split(" ");
+    var tagMatch=currentFilter==="all"||tags.indexOf(currentFilter)!==-1;
+    var textMatch=!q||b.textContent.toLowerCase().indexOf(q)!==-1;
+    var show=tagMatch&&textMatch;
+    b.classList.toggle("hidden",!show);
+    if(show)visible++;
   });
-  document.getElementById('emptyState').style.display = visible === 0 ? 'block' : 'none';
+  document.getElementById("emptyState").style.display=visible===0?"block":"none";
 }
 
-// Compute summary stats
-window.addEventListener('DOMContentLoaded', function() {
-  var blocks = document.querySelectorAll('.update-block');
-  var features = 0, fixes = 0;
-  blocks.forEach(function(b) {
-    features += b.querySelectorAll('li i.add').length;
-    fixes += b.querySelectorAll('li i.fix').length;
+/* ── stats ── */
+function updateStats(){
+  var blocks=document.querySelectorAll(".update-block");
+  var features=0,fixes=0;
+  blocks.forEach(function(b){
+    features+=b.querySelectorAll("li i.add").length;
+    fixes+=b.querySelectorAll("li i.fix").length;
   });
-  document.getElementById('totalUpdates').textContent = blocks.length;
-  document.getElementById('totalFeatures').textContent = features;
-  document.getElementById('totalFixes').textContent = fixes;
+  document.getElementById("totalUpdates").textContent=blocks.length;
+  document.getElementById("totalFeatures").textContent=features;
+  document.getElementById("totalFixes").textContent=fixes;
+}
+
+/* ── persisted entries (localStorage) ── */
+var LS_KEY = "extra_changelog_entries";
+
+function buildChangeHTML(changes){
+  return (changes||[]).map(function(c){
+    var icon=ICON_MAP[c.type]||"circle";
+    var cls=COLOR_MAP[c.type]||"change";
+    return "<li><i class=\"ti ti-"+icon+" "+cls+"\"></i>"
+          +(c.bold?"<strong>"+esc(c.bold)+"</strong>":"")
+          +(c.text?(c.bold?" — ":"")+esc(c.text):"")+"</li>";
+  }).join("");
+}
+
+function buildTagsHTML(tags){
+  return (tags||["feature"]).map(function(t){
+    return "<span class=\"utag "+t+"\">"+t.charAt(0).toUpperCase()+t.slice(1)+"</span>";
+  }).join("");
+}
+
+function buildEntryBlock(entry, isLatest){
+  var dotCls  = entry.tl_dot_class || (entry.tags&&entry.tags[0]) || "feature";
+  var tagStr  = (entry.tags||["feature"]).join(" ");
+  var ribbon  = isLatest ? "<span class=\"latest-ribbon\"><i class=\"ti ti-sparkles\"></i> Latest</span>" : "";
+  return "<div class=\"update-block\" data-tags=\""+tagStr+"\" data-local=\"true\">"
+    +"<div class=\"tl-dot "+dotCls+"\"></div>"
+    +"<div class=\"update-card\">"
+    +"<div class=\"update-head\">"
+    +"<span class=\"version-tag\">"+esc(entry.version||"v?")+"</span>"
+    +"<span class=\"update-title\">"+esc(entry.title||"")+"</span>"
+    +ribbon
+    +"<span class=\"update-date\">"+esc(entry.date||"")+"</span>"
+    +"</div>"
+    +"<div class=\"update-tags\">"+buildTagsHTML(entry.tags)+"</div>"
+    +"<ul class=\"change-list\">"+buildChangeHTML(entry.changes)+"</ul>"
+    +"</div></div>";
+}
+
+function loadPersistedEntries(){
+  try{
+    var saved=JSON.parse(localStorage.getItem(LS_KEY)||"[]");
+    if(!saved.length)return;
+    var timeline=document.getElementById("timeline");
+    // Remove existing "latest" ribbons from static entries
+    var prevLatest=timeline.querySelector(".latest-ribbon");
+    if(prevLatest)prevLatest.remove();
+    // Prepend saved entries newest-first
+    for(var i=saved.length-1;i>=0;i--){
+      var wrapper=document.createElement("div");
+      wrapper.innerHTML=buildEntryBlock(saved[i], i===0);
+      timeline.insertBefore(wrapper.firstChild, timeline.firstChild);
+    }
+  }catch(e){console.warn("Could not load persisted changelog entries:",e);}
+}
+
+/* ── scan panel ── */
+var lastScanEntry = null;
+
+function openScan(){
+  var saved=sessionStorage.getItem("scan_api_key");
+  if(saved)document.getElementById("scanApiKey").value=saved;
+  setScanState("idle");
+  document.getElementById("scanPanel").classList.add("open");
+  document.getElementById("scanOverlay").classList.add("show");
+}
+function closeScan(){
+  document.getElementById("scanPanel").classList.remove("open");
+  document.getElementById("scanOverlay").classList.remove("show");
+}
+
+function setScanState(state, msg){
+  document.getElementById("scanLoading").style.display  = state==="loading"  ? "flex"  : "none";
+  document.getElementById("scanError").style.display    = state==="error"    ? "flex"  : "none";
+  document.getElementById("scanNoChange").style.display = state==="nochange" ? "flex"  : "none";
+  document.getElementById("scanResults").style.display  = state==="done"     ? "block" : "none";
+  var btn=document.getElementById("scanStartBtn");
+  btn.disabled = state==="loading";
+  btn.innerHTML= state==="loading"
+    ? "<i class=\"ti ti-loader spinning\"></i> Scanning…"
+    : "<i class=\"ti ti-sparkles\"></i> Start Scan";
+  if(state==="error")   document.getElementById("scanErrorMsg").textContent   = msg||"Unknown error";
+  if(state==="nochange")document.getElementById("scanNoChangeMsg").textContent= msg||"No new changes detected";
+}
+
+async function runScan(){
+  var apiKey=document.getElementById("scanApiKey").value.trim();
+  if(apiKey)sessionStorage.setItem("scan_api_key",apiKey);
+
+  // Collect existing version strings from the DOM
+  var versionEls=document.querySelectorAll(".version-tag");
+  var existingVersions=Array.from(versionEls).map(function(el){return el.textContent.trim();});
+
+  setScanState("loading");
+  lastScanEntry=null;
+
+  try{
+    var resp=await fetch("/api/scan-updates",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({api_key:apiKey, existing_versions:existingVersions})
+    });
+    var data=await resp.json();
+
+    if(data.error){setScanState("error",data.error);return;}
+    if(!data.success){setScanState("error","Unexpected server response");return;}
+
+    var entry=data.entry;
+    if(entry.no_changes){setScanState("nochange",entry.message||"No new changes detected");return;}
+
+    lastScanEntry=entry;
+    renderPreview(entry);
+    setScanState("done");
+
+  }catch(e){
+    setScanState("error","Network error — is the server running? ("+e.message+")");
+  }
+}
+
+function renderPreview(entry){
+  document.getElementById("scanPreview").innerHTML=
+    "<div class=\"update-card\">"
+    +"<div class=\"update-head\">"
+    +"<span class=\"version-tag\">"+esc(entry.version||"v?")+"</span>"
+    +"<span class=\"update-title\">"+esc(entry.title||"")+"</span>"
+    +"<span class=\"update-date\">"+esc(entry.date||"")+"</span>"
+    +"</div>"
+    +"<div class=\"update-tags\">"+buildTagsHTML(entry.tags)+"</div>"
+    +"<ul class=\"change-list\">"+buildChangeHTML(entry.changes)+"</ul>"
+    +"</div>";
+}
+
+function addToTimeline(){
+  if(!lastScanEntry)return;
+  var entry=lastScanEntry;
+  var timeline=document.getElementById("timeline");
+
+  // Remove "latest" ribbon from current top
+  var prevLatest=timeline.querySelector(".latest-ribbon");
+  if(prevLatest)prevLatest.remove();
+
+  var wrapper=document.createElement("div");
+  wrapper.innerHTML=buildEntryBlock(entry,true);
+  timeline.insertBefore(wrapper.firstChild, timeline.firstChild);
+
+  // Persist to localStorage
+  try{
+    var saved=JSON.parse(localStorage.getItem(LS_KEY)||"[]");
+    saved.unshift(entry);
+    localStorage.setItem(LS_KEY,JSON.stringify(saved));
+  }catch(e){console.warn("Could not save entry:",e);}
+
+  updateStats();
+  closeScan();
+
+  // Flash banner
+  var banner=document.getElementById("addedBanner");
+  banner.style.opacity="1";
+  setTimeout(function(){banner.style.opacity="0";},3000);
+}
+
+function copyScanHTML(){
+  if(!lastScanEntry)return;
+  var entry=lastScanEntry;
+  var dotCls  = entry.tl_dot_class||(entry.tags&&entry.tags[0])||"feature";
+  var tagStr  = (entry.tags||["feature"]).join(" ");
+
+  var changesRaw=(entry.changes||[]).map(function(c){
+    var icon=ICON_MAP[c.type]||"circle";
+    return "          <li><i class=\"ti ti-"+icon+" "+c.type+"\"></i>"
+          +(c.bold?"<strong>"+c.bold+"</strong>":"")
+          +(c.text?(c.bold?" \u2014 ":"")+c.text:"")+"</li>";
+  }).join("\n");
+
+  var tagsRaw=(entry.tags||["feature"]).map(function(t){
+    return "          <span class=\"utag "+t+"\">"+t.charAt(0).toUpperCase()+t.slice(1)+"</span>";
+  }).join("\n");
+
+  var html="    <!-- "+entry.version+" -->\n"
+    +"    <div class=\"update-block\" data-tags=\""+tagStr+"\">\n"
+    +"      <div class=\"tl-dot "+dotCls+"\"></div>\n"
+    +"      <div class=\"update-card\">\n"
+    +"        <div class=\"update-head\">\n"
+    +"          <span class=\"version-tag\">"+entry.version+"</span>\n"
+    +"          <span class=\"update-title\">"+entry.title+"</span>\n"
+    +"          <span class=\"latest-ribbon\"><i class=\"ti ti-sparkles\"></i> Latest</span>\n"
+    +"          <span class=\"update-date\">"+entry.date+"</span>\n"
+    +"        </div>\n"
+    +"        <div class=\"update-tags\">\n"+tagsRaw+"\n        </div>\n"
+    +"        <ul class=\"change-list\">\n"+changesRaw+"\n        </ul>\n"
+    +"      </div>\n"
+    +"    </div>";
+
+  navigator.clipboard.writeText(html).then(function(){
+    var btn=document.getElementById("copyHtmlBtn");
+    var orig=btn.innerHTML;
+    btn.innerHTML="<i class=\"ti ti-check\"></i> Copied!";
+    setTimeout(function(){btn.innerHTML=orig;},2000);
+  });
+}
+
+/* ── init ── */
+window.addEventListener("DOMContentLoaded",function(){
+  loadPersistedEntries();
+  updateStats();
 });
 </script>
 </body>
