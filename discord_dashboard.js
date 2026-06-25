@@ -311,11 +311,13 @@ app.get("/history/:channel_id", async (req, res) => {
   if (!client) return res.status(401).json({ error: "Not authenticated" });
   const channel = client.channels.cache.get(req.params.channel_id);
   if (!channel) return res.status(404).json({ error: "Channel not found" });
+  const limit = Math.min(parseInt(req.query.limit || "50", 10), 100);
   try {
-    const fetched = await channel.messages.fetch({ limit: 50 });
+    const fetched = await channel.messages.fetch({ limit });
     const msgs = [...fetched.values()].reverse().map(msg => {
-      const isReplyToBot = msg.reference ? false : false; // resolved on live events only
       const mentionsBot  = msg.mentions.has(client.user);
+      // Check if this is a reply to one of the bot's messages using the referenced author id
+      const isReplyToBot = !!(msg.reference && msg.mentions.repliedUser?.id === client.user.id);
       return {
         id:            msg.id,
         author:        msg.member?.displayName || msg.author.username,
@@ -346,6 +348,60 @@ app.get("/events/:channel_id", (req, res) => {
 // SSE — DM events
 app.get("/dm-events/:user_id", (req, res) => {
   sseStream(req, res, dmSseConnections, req.params.user_id);
+});
+
+// Search messages in a channel
+app.get("/search/:channel_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const channel = client.channels.cache.get(req.params.channel_id);
+  if (!channel) return res.status(404).json({ error: "Channel not found" });
+  const q = (req.query.q || "").toLowerCase().trim();
+  if (!q) return res.json([]);
+  try {
+    const fetched = await channel.messages.fetch({ limit: 100 });
+    const results = [...fetched.values()]
+      .filter(msg => msg.content.toLowerCase().includes(q))
+      .slice(0, 25)
+      .reverse()
+      .map(msg => ({
+        id:        msg.id,
+        author:    msg.member?.displayName || msg.author.username,
+        author_id: msg.author.id,
+        content:   msg.content,
+        timestamp: msg.createdAt.toISOString(),
+        is_bot:    msg.author.bot,
+        can_delete: msg.author.id === client.user.id,
+        channel_id: msg.channelId,
+      }));
+    return res.json(results);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// List open DM channels (users the bot has exchanged DMs with)
+app.get("/dm-list", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  try {
+    const dms = [...client.channels.cache.values()]
+      .filter(c => c.type === ChannelType.DM)
+      .map(c => ({
+        channel_id:  c.id,
+        user_id:     c.recipient?.id,
+        username:    c.recipient?.username || "Unknown",
+        last_message: c.lastMessage ? {
+          content:   c.lastMessage.content,
+          timestamp: c.lastMessage.createdAt.toISOString(),
+          is_bot:    c.lastMessage.author.bot,
+        } : null,
+      }))
+      .filter(d => d.user_id);
+    return res.json(dms);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
 });
 
 // Send message
