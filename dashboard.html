@@ -529,7 +529,7 @@ function reloginAfterNuke(){
   document.getElementById("gateToken").value="";
   document.getElementById("gateToken").focus();
   curServer=null;curChan=null;curChanId=null;replyMsg=null;notifCount=0;lastNotifId=null;
-  msgStore.clear();customBots={};activeBotId="main";dmTarget=null;memberMap={};
+  msgStore.clear();customBots={};activeBotId="main";dmTarget=null;memberMap={};dmChannelId=null;_srvHash="";
   document.getElementById("srvList").innerHTML="";
   document.getElementById("botList").innerHTML="";
   document.getElementById("memberList").innerHTML='<div class="member-empty">Select a server</div>';
@@ -544,28 +544,36 @@ function reloginAfterNuke(){
 /* ── state ── */
 var curServer=null,curChan=null,curChanId=null,replyMsg=null,notifCount=0,lastNotifId=null,evtSrc=null;
 var msgStore=new Map(),customBots={},activeBotId="main";
-var dmTarget=null,dmEvtSrc=null;
+var dmTarget=null,dmEvtSrc=null,dmChannelId=null; // dmChannelId = Discord DM channel id for deletes
 var memberMap={}; // user_id → member obj
 
 /* ── status poll ── */
+var _lastOnline=false;
 function pollStatus(){
   fetch("/status").then(function(r){return r.json();}).then(function(d){
     if(d.nuked){showNukeOverlay();return;}
     var dot=document.getElementById("statusDot"),txt=document.getElementById("statusText");
-    dot.className="dot"+(d.online?" online":"");
-    txt.textContent=d.online?d.username:"offline";
-    if(d.online)refreshBotPills();
+    var nowOnline=!!d.online;
+    dot.className="dot"+(nowOnline?" online":"");
+    txt.textContent=nowOnline?d.username:"offline";
+    if(nowOnline&&!_lastOnline)refreshBotPills(); // only refresh pills on state change
+    _lastOnline=nowOnline;
   }).catch(function(){
     document.getElementById("statusDot").className="dot";
     document.getElementById("statusText").textContent="offline";
+    _lastOnline=false;
   });
 }
-if(SESSION_TOKEN){pollStatus();setInterval(pollStatus,5000);}
-else{setInterval(function(){if(SESSION_TOKEN)pollStatus();},5000);}
+if(SESSION_TOKEN){pollStatus();setInterval(pollStatus,8000);}
+else{setInterval(function(){if(SESSION_TOKEN)pollStatus();},8000);}
 
 /* ── servers ── */
+var _srvHash="";
 function loadServers(){
   fetch("/guilds").then(function(r){return r.json();}).then(function(gs){
+    var hash=gs.map(function(g){return g.id;}).join(",");
+    if(hash===_srvHash)return; // nothing changed, skip redraw
+    _srvHash=hash;
     var list=document.getElementById("srvList"),aid=curServer?curServer.id:null;
     list.innerHTML="";
     if(!gs.length){list.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--mut)">No servers found</div>';return;}
@@ -576,8 +584,8 @@ function loadServers(){
     });
   }).catch(function(){});
 }
-if(SESSION_TOKEN){loadServers();setInterval(loadServers,20000);}
-else{setInterval(function(){if(SESSION_TOKEN)loadServers();},20000);}
+if(SESSION_TOKEN){loadServers();setInterval(loadServers,30000);}
+else{setInterval(function(){if(SESSION_TOKEN)loadServers();},30000);}
 
 function pickServer(g,el){
   document.querySelectorAll(".srv").forEach(function(e){e.classList.remove("active");});
@@ -655,7 +663,11 @@ function loadHistory(cid){
     log.innerHTML="";
     if(msgs.error){log.innerHTML='<div class="log-state"><i class="ti ti-lock"></i><div>'+esc(msgs.error)+"</div></div>";return;}
     if(!msgs.length){log.innerHTML='<div class="log-state"><i class="ti ti-message-off"></i><div>No messages yet</div></div>';return;}
-    msgs.forEach(function(m){log.appendChild(buildMsg(m));});log.scrollTop=log.scrollHeight;
+    // Use a DocumentFragment for a single DOM write instead of N appends
+    var frag=document.createDocumentFragment();
+    msgs.forEach(function(m){frag.appendChild(buildMsg(m));});
+    log.appendChild(frag);
+    log.scrollTop=log.scrollHeight;
   }).catch(function(){log.innerHTML='<div class="log-state"><i class="ti ti-wifi-off"></i><div>Failed to load</div></div>';});
 }
 
@@ -724,7 +736,8 @@ function buildMsg(msg){
   var delBtn=el.querySelector('[data-act="delete"]');
   if(delBtn)delBtn.addEventListener("click",function(e){
     e.stopPropagation();
-    deleteMsg(curChanId, msg.id, el);
+    // Use msg.channel_id (returned by backend) so this works in both channel view and DM view
+    deleteMsg(msg.channel_id||curChanId, msg.id, el);
   });
 
   // Click avatar or name → open DM
@@ -745,17 +758,26 @@ function buildMsg(msg){
   return el;
 }
 
-/* ── delete message ── */
+/* ── delete message (channel or DM) ── */
 function deleteMsg(chanId, msgId, el){
   if(!chanId||!msgId)return;
+  // Optimistic UI — fade immediately, restore on failure
+  el.style.opacity="0.4";el.style.pointerEvents="none";
   fetch("/message/"+chanId+"/"+msgId,{method:"DELETE"})
     .then(function(r){return r.json();})
     .then(function(d){
-      if(d.success){el.style.opacity="0";el.style.transform="translateX(-8px)";el.style.transition="all .2s";
-        setTimeout(function(){el.remove();},200);
-        showToast("Message deleted","ok","ti-trash");
-      } else showToast(d.error||"Could not delete","err","ti-alert-circle");
-    }).catch(function(){showToast("Network error","err","ti-wifi-off");});
+      if(d.success){
+        el.style.transition="all .18s";el.style.opacity="0";el.style.transform="translateX(-6px)";
+        setTimeout(function(){el.remove();},180);
+        showToast("Deleted","ok","ti-trash");
+      } else {
+        el.style.opacity="";el.style.pointerEvents="";
+        showToast(d.error||"Could not delete","err","ti-alert-circle");
+      }
+    }).catch(function(){
+      el.style.opacity="";el.style.pointerEvents="";
+      showToast("Network error","err","ti-wifi-off");
+    });
 }
 
 /* ── DM view ── */
@@ -796,10 +818,17 @@ function openDM(member){
     document.getElementById("dmLoading").style.display="flex";
     fetch("/dm-history/"+member.id)
       .then(function(r){return r.json();})
-      .then(function(msgs){
+      .then(function(data){
         document.getElementById("dmLoading").style.display="none";
-        if(msgs.error){showToast("DM history: "+msgs.error,"warn","ti-info-circle");return;}
-        msgs.forEach(function(m){appendDMMsg(m);});
+        if(data.error){showToast("DM history: "+data.error,"warn","ti-info-circle");return;}
+        // Store the DM channel id so delete works
+        dmChannelId=data.channel_id||null;
+        var frag=document.createDocumentFragment();
+        (data.messages||[]).forEach(function(m){
+          m.channel_id=dmChannelId; // tag each msg with the channel id
+          frag.appendChild(buildMsg(m));
+        });
+        container.insertBefore(frag, document.getElementById("dmLoading"));
         container.scrollTop=container.scrollHeight;
       }).catch(function(){
         document.getElementById("dmLoading").style.display="none";
@@ -813,7 +842,9 @@ function openDM(member){
         var msg=JSON.parse(e.data);
         if(msg.type==="ping")return;
         if(msg.type==="shutdown"){showNukeOverlay();return;}
-        appendDMMsg(msg);
+        if(dmChannelId)msg.channel_id=dmChannelId;
+        var el=buildMsg(msg);
+        container.insertBefore(el, document.getElementById("dmLoading"));
         container.scrollTop=container.scrollHeight;
         showToast("DM from "+msg.author,"info","ti-message-2");
       }catch(err){}
@@ -824,43 +855,12 @@ function openDM(member){
   document.getElementById("dmInput").focus();
 }
 
-function appendDMMsg(msg){
-  var container=document.getElementById("dmMsgs");
-  var el=document.createElement("div");
-  el.className="dm-msg-row msg-item";
-  el.style.cssText="border-left:none;margin-left:0;cursor:default";
-  el.innerHTML='<div class="msg-body"><div class="msg-av-wrap" style="cursor:default">'
-    +'<div class="msg-av" style="background:'+ac(msg.author)+'">'+ini(msg.author)+'</div>'
-    +'</div><div class="msg-right"><div class="msg-meta">'
-    +'<span class="msg-author" style="cursor:default">'+esc(msg.author)+'</span>'
-    +'<span class="msg-time">'+fmt(msg.timestamp)+'</span>'
-    +(msg.is_bot?'<span class="badge b-bot">BOT</span>':'')
-    +'</div><div class="msg-text">'+(esc(msg.content)||'<span style="opacity:.35">(no content)</span>')+'</div></div></div>'
-    +(msg.can_delete
-      ?'<div class="msg-acts"><button class="act-btn del" onclick="deleteDMMsg(this,\''+esc(msg.id)+'\')"><i class="ti ti-trash"></i></button></div>'
-      :'');
-  // insert before the loading indicator
-  var loading=document.getElementById("dmLoading");
-  container.insertBefore(el,loading);
-}
 
-function deleteDMMsg(btn, msgId){
-  if(!dmTarget||!dmTarget.id)return;
-  // DM channel_id is not known here — use a dedicated endpoint that looks up the DM channel
-  // We fall back to the /message/{channel_id}/{message_id} route; we pass the user_id as channel_id
-  // The backend will fetch_channel which resolves DM channels too.
-  fetch("/dm-history/"+dmTarget.id)
-    .then(function(){}) // no-op; we can't easily get the channel_id from the client
-    .catch(function(){});
-  // Simpler: hit delete with a synthetic channel derived from what the bot knows
-  // Since we can't do this without the DM channel id, show a toast
-  showToast("To delete DMs, use the /message route with the DM channel ID","warn","ti-info-circle");
-}
 
 function closeDM(){
   document.getElementById("dmView").classList.remove("open");
   if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
-  dmTarget=null;
+  dmTarget=null;dmChannelId=null;
 }
 
 function sendDM(){
@@ -874,10 +874,17 @@ function sendDM(){
     .then(function(d){
       if(d.success){
         input.value="";input.style.height="";
-        // Append sent message locally
-        appendDMMsg({id:d.message_id||"local",author:document.getElementById("statusText").textContent||"Bot",
-          content:text,timestamp:new Date().toISOString(),is_bot:true,can_delete:true});
-        document.getElementById("dmMsgs").scrollTop=99999;
+        // Store channel_id returned by server so future deletes work
+        if(d.channel_id)dmChannelId=d.channel_id;
+        var sentMsg={id:d.message_id||("local-"+Date.now()),
+          author:document.getElementById("statusText").textContent||"Bot",
+          author_id:"me", content:text, timestamp:new Date().toISOString(),
+          is_bot:true, can_delete:true,
+          channel_id:dmChannelId};
+        var container=document.getElementById("dmMsgs");
+        var el=buildMsg(sentMsg);
+        container.insertBefore(el, document.getElementById("dmLoading"));
+        container.scrollTop=container.scrollHeight;
         showToast("DM sent","ok","ti-check");
       } else showToast(d.error||"Failed to send DM","err","ti-alert-circle");
     }).catch(function(){showToast("Network error","err","ti-wifi-off");})
