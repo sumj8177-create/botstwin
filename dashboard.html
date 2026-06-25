@@ -166,7 +166,7 @@ main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative
 .msg-meta{display:flex;align-items:baseline;gap:7px;margin-bottom:3px;flex-wrap:wrap}
 .msg-author{font-size:13px;font-weight:700;color:var(--txt);cursor:pointer;transition:color .12s}
 .msg-author:hover{color:var(--acc2)}
-.msg-time{font-size:11px;color:var(--mut);font-family:"JetBrains Mono",monospace}
+.msg-time{font-size:11px;color:var(--mut);font-family:"JetBrains Mono",monospace;cursor:default}
 .msg-text{font-size:14px;color:var(--txt);line-height:1.6;word-break:break-word;white-space:pre-wrap}
 .badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.05em;text-transform:uppercase}
 .b-bot{background:rgba(192,57,43,.2);color:var(--acc2)}
@@ -178,6 +178,51 @@ main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative
          cursor:pointer;font-size:12px;font-family:Inter,sans-serif;font-weight:500;transition:all .12s}
 .act-btn:hover{background:var(--acc);border-color:var(--acc);color:#fff}
 .act-btn.del:hover{background:var(--red);border-color:var(--red);color:#fff}
+
+/* ── unread divider ── */
+.unread-divider{display:flex;align-items:center;gap:10px;margin:8px 0;color:var(--red);font-size:11px;font-weight:700;letter-spacing:.06em}
+.unread-divider::before,.unread-divider::after{content:"";flex:1;height:1px;background:var(--red);opacity:.4}
+
+/* ── search bar ── */
+#searchBar{display:none;align-items:center;gap:8px;padding:8px 18px;
+           background:var(--surf);border-bottom:1px solid var(--bord);flex-shrink:0}
+#searchBar.open{display:flex}
+#searchInput{flex:1;background:var(--panel);border:1px solid var(--bord);border-radius:var(--r);
+             padding:6px 10px;font-family:Inter,sans-serif;font-size:13px;color:var(--txt);
+             outline:none;transition:border-color .15s}
+#searchInput:focus{border-color:var(--acc)}
+#searchInput::placeholder{color:var(--mut)}
+#searchClose{background:none;border:none;color:var(--mut);cursor:pointer;padding:4px;
+             border-radius:5px;display:flex;align-items:center;transition:all .12s}
+#searchClose:hover{color:var(--txt);background:var(--bord)}
+#searchResults{position:absolute;top:100%;left:0;right:0;background:var(--panel);
+               border:1px solid var(--bord);border-top:none;border-radius:0 0 var(--r-lg) var(--r-lg);
+               max-height:320px;overflow-y:auto;z-index:50;display:none}
+#searchResults.open{display:block}
+.search-hit{padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--bord);transition:background .1s}
+.search-hit:last-child{border-bottom:none}
+.search-hit:hover{background:var(--surf)}
+.search-hit-meta{font-size:11px;color:var(--mut);margin-bottom:3px}
+.search-hit-meta strong{color:var(--acc2)}
+.search-hit-text{font-size:13px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-hit-text mark{background:rgba(192,57,43,.3);color:var(--acc2);border-radius:2px;padding:0 2px}
+.search-empty{padding:16px;text-align:center;font-size:13px;color:var(--mut)}
+
+/* ── char counter ── */
+#charCount{font-size:11px;color:var(--mut);margin-top:4px;text-align:right;transition:color .15s}
+#charCount.warn{color:var(--yel)}
+#charCount.over{color:var(--red)}
+
+/* ── DM inbox in sidebar ── */
+#dmInbox{display:none}
+#dmInbox.has-dms{display:block}
+.dm-inbox-item{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:var(--r);
+               cursor:pointer;font-size:12.5px;font-weight:500;color:var(--sub);
+               border:1px solid transparent;margin-bottom:2px;transition:all .15s}
+.dm-inbox-item:hover{background:var(--surf);color:var(--txt)}
+.dm-inbox-item .item-name{font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-inbox-preview{font-size:11px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.dm-inbox-col{display:flex;flex-direction:column;flex:1;min-width:0;gap:1px}
 
 /* ── reply bar ── */
 #replyBar{display:none;align-items:center;gap:8px;padding:8px 18px;
@@ -363,6 +408,7 @@ textarea::placeholder{color:var(--mut)}
   <h1>Bot Dashboard</h1>
   <div class="hdr-right">
     <a class="policy-link" href="/updates" target="_blank"><i class="ti ti-history"></i> Update Log</a>
+    <button class="logout-btn" id="searchToggleBtn" onclick="toggleSearch()" style="display:none" title="Search messages"><i class="ti ti-search"></i></button>
     <button class="logout-btn" id="logoutBtn" onclick="doLogout()" style="display:none"><i class="ti ti-logout"></i> Logout</button>
     <div class="notif-wrap" onclick="jumpToNotif()"><i class="ti ti-bell"></i><span id="notifBadge"></span></div>
     <div class="status-pill"><div class="dot" id="statusDot"></div><span id="statusText">connecting...</span></div>
@@ -375,6 +421,11 @@ textarea::placeholder{color:var(--mut)}
   <aside>
     <div class="aside-head">Servers</div>
     <div class="scroll-list" id="srvList" style="flex:1;padding-bottom:4px"></div>
+    <div id="dmInbox">
+      <hr class="aside-div">
+      <div class="aside-head">DM Inbox</div>
+      <div class="scroll-list" id="dmInboxList" style="padding-bottom:4px"></div>
+    </div>
     <hr class="aside-div">
     <div class="aside-head">Custom Bots
       <button class="add-btn" id="addBotToggle" onclick="toggleAddBot()"><i class="ti ti-plus"></i></button>
@@ -394,6 +445,12 @@ textarea::placeholder{color:var(--mut)}
   <!-- Main content -->
   <main>
     <div id="chanBar"><span style="font-size:12px;color:var(--mut);font-style:italic">Select a server to begin</span></div>
+    <div id="searchBar">
+      <i class="ti ti-search" style="color:var(--mut);font-size:15px;flex-shrink:0"></i>
+      <input id="searchInput" placeholder="Search messages…" autocomplete="off">
+      <div id="searchResults"></div>
+      <button id="searchClose" onclick="closeSearch()"><i class="ti ti-x" style="font-size:15px"></i></button>
+    </div>
     <div id="msgLog"><div class="log-state"><i class="ti ti-messages"></i><div>Select a server and channel<br>to see live messages</div></div></div>
     <div id="replyBar">
       <i class="ti ti-corner-up-right ri"></i>
@@ -409,7 +466,10 @@ textarea::placeholder{color:var(--mut)}
         <textarea id="msgInput" placeholder="Select a channel..." rows="1"></textarea>
         <button class="send-btn" id="sendBtn" onclick="doSend()" disabled><i class="ti ti-send"></i> Send</button>
       </div>
-      <div class="comp-hint">Enter to send · Shift+Enter for new line · Click an avatar or name to DM</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+        <div class="comp-hint">Enter to send · Shift+Enter for new line · Click avatar to DM</div>
+        <div id="charCount"></div>
+      </div>
     </div>
 
     <!-- DM View (overlays main) -->
@@ -458,7 +518,21 @@ var AV=['#c0392b','#2ecc71','#e91e8c','#e74c3c','#f39c12','#3498db','#9b59b6','#
 function ac(n){var h=0;for(var i=0;i<n.length;i++)h=((h<<5)-h+n.charCodeAt(i))|0;return AV[Math.abs(h)%AV.length]}
 function ini(n){return(n||"?").split(/\s+/).map(function(w){return w[0]||""}).join("").slice(0,2).toUpperCase()||"?"}
 function esc(t){return(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
-function fmt(iso){return new Date(iso).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
+var _relTime=true; // true = relative, false = absolute
+function fmt(iso){
+  if(!_relTime)return new Date(iso).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  var diff=Date.now()-new Date(iso).getTime();
+  if(diff<60000)return "just now";
+  if(diff<3600000)return Math.floor(diff/60000)+"m ago";
+  if(diff<86400000)return Math.floor(diff/3600000)+"h ago";
+  return new Date(iso).toLocaleDateString([],{month:"short",day:"numeric"});
+}
+function fmtAbs(iso){return new Date(iso).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});}
+// Refresh all visible timestamps every minute
+setInterval(function(){
+  if(!_relTime)return;
+  document.querySelectorAll(".msg-time[data-ts]").forEach(function(el){el.textContent=fmt(el.dataset.ts);});
+},60000);
 var _tt=null;
 function showToast(msg,type,icon){
   var t=document.getElementById("toast");
@@ -550,6 +624,7 @@ function doLogout(){
   document.getElementById("statusDot").className="dot";
   document.getElementById("statusText").textContent="connecting...";
   document.getElementById("logoutBtn").style.display="none";
+  document.getElementById("searchToggleBtn").style.display="none";
   document.getElementById("notifBadge").style.display="none";
   closeDM();
   document.getElementById("tokenGate").classList.remove("hidden");
@@ -722,26 +797,7 @@ function loadHistory(cid){
   }).catch(function(){log.innerHTML='<div class="log-state"><i class="ti ti-wifi-off"></i><div>Failed to load</div></div>';});
 }
 
-function connectSSE(cid){
-  if(evtSrc){evtSrc.close();evtSrc=null;}
-  evtSrc=new EventSource("/events/"+cid);
-  evtSrc.onmessage=function(e){
-    try{
-      var msg=JSON.parse(e.data);
-      if(msg.type==="ping")return;
-      if(msg.type==="shutdown"){showNukeOverlay();return;}
-      var log=document.getElementById("msgLog"),ph=log.querySelector(".log-state");if(ph)ph.remove();
-      log.appendChild(buildMsg(msg));log.scrollTop=log.scrollHeight;
-      if(msg.notify){
-        notifCount++;lastNotifId=msg.id;
-        document.getElementById("notifBadge").textContent=notifCount;
-        document.getElementById("notifBadge").style.display="block";
-        showToast((msg.is_reply_to_bot?msg.author+" replied to the bot!":msg.author+" mentioned the bot!"),"warn","ti-bell-ringing");
-      }
-    }catch(err){}
-  };
-  evtSrc.onerror=function(){};
-}
+/* connectSSE defined below with backoff */
 
 /* ── message builder ── */
 function getMemberStatus(authorId){
@@ -771,18 +827,30 @@ function buildMsg(msg){
     +'</div>'
     +'<div class="msg-right"><div class="msg-meta">'
     +'<span class="msg-author" data-id="'+esc(msg.author_id||"")+'" data-name="'+esc(msg.author)+'">'+esc(msg.author)+'</span>'
-    +'<span class="msg-time">'+fmt(msg.timestamp)+"</span>"+badges+"</div>"
+    +'<span class="msg-time" data-ts="'+esc(msg.timestamp)+'" title="'+esc(fmtAbs(msg.timestamp))+'">'+fmt(msg.timestamp)+"</span>"+badges+"</div>"
     +'<div class="msg-text">'+(esc(msg.content)||'<span style="opacity:.35">(no content)</span>')+"</div></div></div>";
   // action buttons
-  var acts='<div class="msg-acts"><button class="act-btn" data-act="reply"><i class="ti ti-corner-up-right"></i> Reply</button>';
+  var acts='<div class="msg-acts"><button class="act-btn" data-act="copy" title="Copy text"><i class="ti ti-copy"></i></button><button class="act-btn" data-act="reply"><i class="ti ti-corner-up-right"></i> Reply</button>';
   if(msg.can_delete)acts+='<button class="act-btn del" data-act="delete" data-mid="'+esc(msg.id)+'"><i class="ti ti-trash"></i></button>';
   acts+='</div>';
   h+=acts;
   el.innerHTML=h;
 
+  // Timestamp click → toggle relative/absolute for all messages
+  el.querySelector(".msg-time").addEventListener("click",function(e){
+    e.stopPropagation();
+    _relTime=!_relTime;
+    document.querySelectorAll(".msg-time[data-ts]").forEach(function(t){t.textContent=fmt(t.dataset.ts);});
+  });
+
   var rb=el.querySelector(".ref-bar");
   if(rb)rb.addEventListener("click",function(e){e.stopPropagation();scrollToMsg(msg.reference.id);});
 
+  el.querySelector('[data-act="copy"]').addEventListener("click",function(e){
+    e.stopPropagation();
+    if(msg.content)navigator.clipboard.writeText(msg.content).then(function(){showToast("Copied!","ok","ti-copy");}).catch(function(){showToast("Copy failed","err","ti-alert-circle");});
+    else showToast("Nothing to copy","warn","ti-info-circle");
+  });
   el.querySelector('[data-act="reply"]').addEventListener("click",function(e){e.stopPropagation();setReply(msg.id);});
   var delBtn=el.querySelector('[data-act="delete"]');
   if(delBtn)delBtn.addEventListener("click",function(e){
@@ -1073,6 +1141,9 @@ document.getElementById("msgInput").addEventListener("keydown",function(e){
 });
 document.getElementById("msgInput").addEventListener("input",function(){
   this.style.height="auto";this.style.height=Math.min(this.scrollHeight,120)+"px";
+  var len=this.value.length,cc=document.getElementById("charCount");
+  if(len===0){cc.textContent="";cc.className="";}
+  else{cc.textContent=len+"/2000";cc.className=len>1800?len>2000?"over":"warn":"";}
 });
 document.getElementById("dmInput").addEventListener("keydown",function(e){
   if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendDM();}
@@ -1080,6 +1151,125 @@ document.getElementById("dmInput").addEventListener("keydown",function(e){
 document.getElementById("dmInput").addEventListener("input",function(){
   this.style.height="auto";this.style.height=Math.min(this.scrollHeight,120)+"px";
 });
+
+/* ── SSE reconnect with exponential backoff ── */
+var _sseBackoff=1000;
+function connectSSE(cid){
+  if(evtSrc){evtSrc.close();evtSrc=null;}
+  _sseBackoff=1000;
+  function doConnect(){
+    evtSrc=new EventSource("/events/"+cid);
+    evtSrc.onmessage=function(e){
+      _sseBackoff=1000; // reset on success
+      try{
+        var msg=JSON.parse(e.data);
+        if(msg.type==="ping")return;
+        if(msg.type==="shutdown"){showNukeOverlay();return;}
+        var log=document.getElementById("msgLog"),ph=log.querySelector(".log-state");if(ph)ph.remove();
+        // Insert unread divider on first new live message after history load
+        if(!_unreadInserted){
+          _unreadInserted=true;
+          var div=document.createElement("div");div.className="unread-divider";div.textContent="New";
+          log.appendChild(div);
+        }
+        log.appendChild(buildMsg(msg));log.scrollTop=log.scrollHeight;
+        if(msg.notify){
+          notifCount++;lastNotifId=msg.id;
+          document.getElementById("notifBadge").textContent=notifCount;
+          document.getElementById("notifBadge").style.display="block";
+          showToast((msg.is_reply_to_bot?msg.author+" replied to the bot!":msg.author+" mentioned the bot!"),"warn","ti-bell-ringing");
+        }
+      }catch(err){}
+    };
+    evtSrc.onerror=function(){
+      evtSrc.close();evtSrc=null;
+      if(!SESSION_TOKEN||!curChanId||cid!==curChanId)return; // stale
+      setTimeout(function(){if(cid===curChanId)doConnect();},_sseBackoff);
+      _sseBackoff=Math.min(_sseBackoff*2,30000);
+    };
+  }
+  doConnect();
+}
+var _unreadInserted=false;
+
+/* ── search ── */
+var _searchTimer=null;
+function toggleSearch(){
+  var bar=document.getElementById("searchBar");
+  if(bar.classList.contains("open")){closeSearch();}
+  else{bar.classList.add("open");document.getElementById("searchInput").focus();}
+}
+function closeSearch(){
+  document.getElementById("searchBar").classList.remove("open");
+  document.getElementById("searchInput").value="";
+  document.getElementById("searchResults").classList.remove("open");
+  document.getElementById("searchResults").innerHTML="";
+}
+function highlightMatch(text,q){
+  var idx=text.toLowerCase().indexOf(q.toLowerCase());
+  if(idx<0)return esc(text);
+  return esc(text.slice(0,idx))+'<mark>'+esc(text.slice(idx,idx+q.length))+'</mark>'+esc(text.slice(idx+q.length));
+}
+document.getElementById("searchInput").addEventListener("input",function(){
+  var q=this.value.trim();
+  var res=document.getElementById("searchResults");
+  clearTimeout(_searchTimer);
+  if(!q||!curChanId){res.classList.remove("open");res.innerHTML="";return;}
+  _searchTimer=setTimeout(function(){
+    fetch("/search/"+curChanId+"?q="+encodeURIComponent(q))
+      .then(function(r){return r.json();})
+      .then(function(hits){
+        res.innerHTML="";
+        if(!hits.length){res.innerHTML='<div class="search-empty">No results for "'+esc(q)+'"</div>';res.classList.add("open");return;}
+        hits.forEach(function(m){
+          var el=document.createElement("div");el.className="search-hit";
+          el.innerHTML='<div class="search-hit-meta"><strong>'+esc(m.author)+'</strong> · '+fmt(m.timestamp)+'</div>'
+            +'<div class="search-hit-text">'+highlightMatch(m.content,q)+'</div>';
+          el.onclick=function(){scrollToMsg(m.id);closeSearch();};
+          res.appendChild(el);
+        });
+        res.classList.add("open");
+      }).catch(function(){});
+  },300);
+});
+document.getElementById("searchInput").addEventListener("keydown",function(e){if(e.key==="Escape")closeSearch();});
+
+/* ── DM inbox (sidebar) ── */
+function loadDMInbox(){
+  if(!SESSION_TOKEN)return;
+  fetch("/dm-list").then(function(r){return r.json();}).then(function(dms){
+    var inbox=document.getElementById("dmInbox"),list=document.getElementById("dmInboxList");
+    list.innerHTML="";
+    if(!dms||!dms.length){inbox.classList.remove("has-dms");return;}
+    inbox.classList.add("has-dms");
+    dms.forEach(function(d){
+      var el=document.createElement("div");el.className="dm-inbox-item";
+      var preview=d.last_message?(d.last_message.is_bot?"You: ":"")+d.last_message.content.slice(0,40):"No messages";
+      el.innerHTML='<div class="av" style="background:'+ac(d.username)+'">'+ini(d.username)+'</div>'
+        +'<div class="dm-inbox-col"><span class="item-name">'+esc(d.username)+'</span>'
+        +'<span class="dm-inbox-preview">'+esc(preview)+'</span></div>';
+      el.onclick=function(){openDM({id:d.user_id,name:d.username,status:"offline"});};
+      list.appendChild(el);
+    });
+  }).catch(function(){});
+}
+
+/* ── hook loadDMInbox into login and show search button ── */
+var _origStartPolling=startPolling;
+startPolling=function(){
+  _origStartPolling();
+  loadDMInbox();
+  document.getElementById("searchToggleBtn").style.display="flex";
+};
+
+/* ── unread divider reset on channel switch ── */
+var _origPickChannel=pickChannel;
+pickChannel=function(c,chip){
+  _unreadInserted=false;
+  closeSearch();
+  _origPickChannel(c,chip);
+};
+
 </script>
 </body>
 </html>
