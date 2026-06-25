@@ -37,6 +37,11 @@ a.policy-link{display:flex;align-items:center;gap:5px;font-size:12px;color:var(-
               padding:5px 11px;border:1px solid var(--bord);border-radius:var(--r);
               text-decoration:none;transition:all .15s;background:var(--panel)}
 a.policy-link:hover{color:var(--txt);border-color:var(--acc);background:var(--adim)}
+.logout-btn{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--sub);
+            padding:5px 11px;border:1px solid var(--bord);border-radius:var(--r);
+            background:var(--panel);cursor:pointer;font-family:Inter,sans-serif;
+            transition:all .15s;text-decoration:none}
+.logout-btn:hover{color:#ed8587;border-color:var(--red);background:rgba(231,76,60,.12)}
 .notif-wrap{position:relative;cursor:pointer;padding:6px;border-radius:var(--r);transition:background .15s}
 .notif-wrap:hover{background:var(--surf)}
 .notif-wrap i{font-size:18px;color:var(--sub)}
@@ -338,7 +343,7 @@ textarea::placeholder{color:var(--mut)}
     </div>
     <div class="gate-error" id="gateError"></div>
     <button class="gate-btn" id="gateBtn" onclick="submitToken()"><i class="ti ti-plug-connected"></i> Connect Bot</button>
-    <div class="gate-note"><i class="ti ti-lock" style="font-size:12px"></i> Token is never saved to disk or sent to any third party</div>
+    <div class="gate-note"><i class="ti ti-lock" style="font-size:12px"></i> Token saved in your browser for 5 hours — never sent to any third party</div>
   </div>
 </div>
 
@@ -358,6 +363,7 @@ textarea::placeholder{color:var(--mut)}
   <h1>Bot Dashboard</h1>
   <div class="hdr-right">
     <a class="policy-link" href="/updates" target="_blank"><i class="ti ti-history"></i> Update Log</a>
+    <button class="logout-btn" id="logoutBtn" onclick="doLogout()" style="display:none"><i class="ti ti-logout"></i> Logout</button>
     <div class="notif-wrap" onclick="jumpToNotif()"><i class="ti ti-bell"></i><span id="notifBadge"></span></div>
     <div class="status-pill"><div class="dot" id="statusDot"></div><span id="statusText">connecting...</span></div>
   </div>
@@ -467,8 +473,12 @@ function statusDotClass(s){
   return "offline";
 }
 
-/* ── session token ── */
-var SESSION_TOKEN=sessionStorage.getItem("bot_token")||"";
+/* ── token persistence (5-hour localStorage) ── */
+var TOKEN_TTL=5*60*60*1000; // 5 hours in ms
+function saveToken(t){localStorage.setItem("bot_token",t);localStorage.setItem("bot_token_exp",String(Date.now()+TOKEN_TTL));}
+function loadToken(){var t=localStorage.getItem("bot_token"),e=parseInt(localStorage.getItem("bot_token_exp")||"0");if(t&&Date.now()<e)return t;clearToken();return "";}
+function clearToken(){localStorage.removeItem("bot_token");localStorage.removeItem("bot_token_exp");}
+var SESSION_TOKEN=loadToken();
 function applyTokenHeader(opts){
   opts=opts||{};if(!opts.headers)opts.headers={};
   if(SESSION_TOKEN)opts.headers["X-Bot-Token"]=SESSION_TOKEN;
@@ -499,8 +509,9 @@ function submitToken(){
   fetch("/status").then(function(r){return r.json();}).then(function(d){
     if(d.nuked){SESSION_TOKEN="";showNukeOverlay();btn.disabled=false;btn.innerHTML='<i class="ti ti-plug-connected"></i> Connect Bot';return;}
     if(d.online){
-      sessionStorage.setItem("bot_token",token);
+      saveToken(token);
       document.getElementById("tokenGate").classList.add("hidden");
+      document.getElementById("logoutBtn").style.display="flex";
       pollStatus();loadServers();loadBots();
     } else {
       SESSION_TOKEN="";setGateError("Bot is offline or token is invalid.");
@@ -518,16 +529,15 @@ document.addEventListener("DOMContentLoaded",function(){
 
 /* ── nuke ── */
 function showNukeOverlay(){
-  SESSION_TOKEN="";sessionStorage.removeItem("bot_token");
+  SESSION_TOKEN="";clearToken();
   if(evtSrc){evtSrc.close();evtSrc=null;}
   if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
   document.getElementById("nukeOverlay").classList.add("show");
 }
-function reloginAfterNuke(){
-  document.getElementById("nukeOverlay").classList.remove("show");
-  document.getElementById("tokenGate").classList.remove("hidden");
-  document.getElementById("gateToken").value="";
-  document.getElementById("gateToken").focus();
+function doLogout(){
+  clearToken();SESSION_TOKEN="";
+  if(evtSrc){evtSrc.close();evtSrc=null;}
+  if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
   curServer=null;curChan=null;curChanId=null;replyMsg=null;notifCount=0;lastNotifId=null;
   msgStore.clear();customBots={};activeBotId="main";dmTarget=null;memberMap={};dmChannelId=null;_srvHash="";
   document.getElementById("srvList").innerHTML="";
@@ -538,7 +548,17 @@ function reloginAfterNuke(){
   document.getElementById("composer").style.display="none";
   document.getElementById("statusDot").className="dot";
   document.getElementById("statusText").textContent="connecting...";
+  document.getElementById("logoutBtn").style.display="none";
+  document.getElementById("notifBadge").style.display="none";
   closeDM();
+  document.getElementById("tokenGate").classList.remove("hidden");
+  document.getElementById("gateToken").value="";
+  document.getElementById("gateError").innerHTML="";
+  document.getElementById("gateToken").focus();
+}
+function reloginAfterNuke(){
+  document.getElementById("nukeOverlay").classList.remove("show");
+  doLogout();
 }
 
 /* ── state ── */
@@ -620,14 +640,18 @@ function loadMembers(guildId){
   var list=document.getElementById("memberList");
   list.innerHTML='<div class="member-empty"><i class="ti ti-loader spinning" style="font-size:18px"></i></div>';
   memberMap={};
-  fetch("/members/"+guildId).then(function(r){return r.json();}).then(function(members){
+  Promise.all([
+    fetch("/members/"+guildId).then(function(r){return r.json();}),
+    fetch("/guild-bots/"+guildId).then(function(r){return r.json();}).catch(function(){return [];})
+  ]).then(function(results){
+    var members=results[0], bots=Array.isArray(results[1])?results[1]:[];
     if(members.error){list.innerHTML='<div class="member-empty">'+esc(members.error)+'</div>';return;}
     members.forEach(function(m){memberMap[m.id]=m;});
-    renderMembers(members);
+    renderMembers(members,bots);
   }).catch(function(){list.innerHTML='<div class="member-empty">Failed to load</div>';});
 }
 
-function renderMembers(members){
+function renderMembers(members,bots){
   var groups={online:[],idle:[],dnd:[],offline:[]};
   members.forEach(function(m){
     var s=m.status;
@@ -651,6 +675,21 @@ function renderMembers(members){
       list.appendChild(el);
     });
   });
+  // ── Bot accounts in this server ──
+  if(bots&&bots.length){
+    var botGrp=document.createElement("div");botGrp.className="member-group-label";
+    botGrp.innerHTML='<i class="ti ti-robot" style="font-size:10px;margin-right:3px"></i>Bots — '+bots.length;
+    list.appendChild(botGrp);
+    bots.forEach(function(b){
+      var el=document.createElement("div");el.className="member-item";
+      var sc=statusDotClass(b.status);
+      el.innerHTML='<div class="member-av" style="background:'+ac(b.name)+'">'+ini(b.name)
+        +'<div class="m-status '+sc+'"></div></div>'
+        +'<span class="member-name">'+esc(b.name)+'</span>'
+        +'<span class="badge b-bot" style="font-size:9px;padding:1px 5px">BOT</span>';
+      list.appendChild(el);
+    });
+  }
   if(!list.children.length)list.innerHTML='<div class="member-empty">No members</div>';
 }
 
