@@ -494,6 +494,26 @@ async def handle_members(request):
         for m in guild.members if not m.bot
     ])
 
+# ── Guild bots scan ────────────────────────────────────────────────────────────
+async def handle_guild_bots(request):
+    """GET /guild-bots/{guild_id} — returns every bot account in the server."""
+    token = req_token(request)
+    bot = await get_bot(token) if token else None
+    if not bot:
+        return web.json_response({"error": "Not authenticated"}, status=401)
+    guild = bot.get_guild(int(request.match_info["guild_id"]))
+    if not guild:
+        return web.json_response({"error": "Guild not found"}, status=404)
+    return web.json_response([
+        {
+            "id":       str(m.id),
+            "name":     m.display_name,
+            "username": str(m),
+            "status":   str(m.status),
+        }
+        for m in guild.members if m.bot
+    ])
+
 # ── DM send ────────────────────────────────────────────────────────────────────
 async def handle_dm_send(request):
     """POST /dm  — opens a DM channel and sends content; returns the DM channel_id."""
@@ -618,6 +638,7 @@ async def main():
     r.add_post  ("/reply",                                handle_reply)
     r.add_delete("/message/{channel_id}/{message_id}",    handle_delete_message)
     r.add_get   ("/members/{guild_id}",                   handle_members)
+    r.add_get   ("/guild-bots/{guild_id}",                handle_guild_bots)
     r.add_post  ("/dm",                                   handle_dm_send)
     r.add_get   ("/dm-history/{user_id}",                 handle_dm_history)
     r.add_get   ("/dm-events/{user_id}",                  handle_dm_events)
