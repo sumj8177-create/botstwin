@@ -501,7 +501,7 @@ function setGateError(msg){
   e.innerHTML=msg?'<i class="ti ti-alert-circle"></i> '+msg:"";
 }
 function submitToken(){
-  var token=document.getElementById("gateToken").value.trim();
+  var token=document.getElementById("gateToken").value.trim()||SESSION_TOKEN;
   if(!token){setGateError("Please paste a bot token.");return;}
   var btn=document.getElementById("gateBtn");
   btn.disabled=true;btn.innerHTML='<i class="ti ti-loader spinning"></i> Verifying…';setGateError("");
@@ -512,7 +512,7 @@ function submitToken(){
       saveToken(token);
       document.getElementById("tokenGate").classList.add("hidden");
       document.getElementById("logoutBtn").style.display="flex";
-      pollStatus();loadServers();loadBots();
+      startPolling();loadBots();
     } else {
       SESSION_TOKEN="";setGateError("Bot is offline or token is invalid.");
       btn.disabled=false;btn.innerHTML='<i class="ti ti-plug-connected"></i> Connect Bot';
@@ -536,6 +536,7 @@ function showNukeOverlay(){
 }
 function doLogout(){
   clearToken();SESSION_TOKEN="";
+  stopPolling();
   if(evtSrc){evtSrc.close();evtSrc=null;}
   if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
   curServer=null;curChan=null;curChanId=null;replyMsg=null;notifCount=0;lastNotifId=null;
@@ -568,8 +569,9 @@ var dmTarget=null,dmEvtSrc=null,dmChannelId=null; // dmChannelId = Discord DM ch
 var memberMap={}; // user_id → member obj
 
 /* ── status poll ── */
-var _lastOnline=false;
+var _lastOnline=false,_pollIv=null,_srvIv=null;
 function pollStatus(){
+  if(!SESSION_TOKEN)return;
   fetch("/status").then(function(r){return r.json();}).then(function(d){
     if(d.nuked){showNukeOverlay();return;}
     var dot=document.getElementById("statusDot"),txt=document.getElementById("statusText");
@@ -584,12 +586,24 @@ function pollStatus(){
     _lastOnline=false;
   });
 }
-if(SESSION_TOKEN){pollStatus();setInterval(pollStatus,8000);}
-else{setInterval(function(){if(SESSION_TOKEN)pollStatus();},8000);}
+function startPolling(){
+  if(_pollIv)clearInterval(_pollIv);
+  if(_srvIv)clearInterval(_srvIv);
+  pollStatus();
+  _pollIv=setInterval(pollStatus,8000);
+  loadServers();
+  _srvIv=setInterval(loadServers,30000);
+}
+function stopPolling(){
+  if(_pollIv){clearInterval(_pollIv);_pollIv=null;}
+  if(_srvIv){clearInterval(_srvIv);_srvIv=null;}
+}
+if(SESSION_TOKEN)startPolling();
 
 /* ── servers ── */
 var _srvHash="";
 function loadServers(){
+  if(!SESSION_TOKEN)return;
   fetch("/guilds").then(function(r){return r.json();}).then(function(gs){
     var hash=gs.map(function(g){return g.id;}).join(",");
     if(hash===_srvHash)return; // nothing changed, skip redraw
@@ -604,8 +618,6 @@ function loadServers(){
     });
   }).catch(function(){});
 }
-if(SESSION_TOKEN){loadServers();setInterval(loadServers,30000);}
-else{setInterval(function(){if(SESSION_TOKEN)loadServers();},30000);}
 
 function pickServer(g,el){
   document.querySelectorAll(".srv").forEach(function(e){e.classList.remove("active");});
@@ -885,7 +897,13 @@ function openDM(member){
         var el=buildMsg(msg);
         container.insertBefore(el, document.getElementById("dmLoading"));
         container.scrollTop=container.scrollHeight;
-        showToast("DM from "+msg.author,"info","ti-message-2");
+        // Notify: badge + toast (only for messages the bot didn't send)
+        if(!msg.is_bot){
+          notifCount++;lastNotifId=msg.id;
+          document.getElementById("notifBadge").textContent=notifCount;
+          document.getElementById("notifBadge").style.display="block";
+          showToast("📨 DM from "+msg.author,"warn","ti-bell-ringing");
+        }
       }catch(err){}
     };
   }
@@ -1034,7 +1052,20 @@ function scrollToMsg(id){
   if(el){el.scrollIntoView({behavior:"smooth",block:"center"});el.style.background="rgba(192,57,43,.25)";setTimeout(function(){el.style.background=""},1200);}
 }
 function jumpToNotif(){
-  if(lastNotifId){scrollToMsg(lastNotifId);notifCount=0;document.getElementById("notifBadge").style.display="none";}
+  if(!lastNotifId){return;}
+  notifCount=0;document.getElementById("notifBadge").style.display="none";
+  // Try channel log first, then DM container
+  var el=document.getElementById("msg-"+lastNotifId);
+  if(el){
+    // If DM view is open, scroll inside it; otherwise scroll channel log
+    var dmView=document.getElementById("dmView");
+    if(dmView.classList.contains("open")){
+      el.scrollIntoView({behavior:"smooth",block:"center"});
+      el.style.background="rgba(192,57,43,.25)";setTimeout(function(){el.style.background=""},1200);
+    } else {
+      scrollToMsg(lastNotifId);
+    }
+  }
 }
 document.getElementById("msgInput").addEventListener("keydown",function(e){
   if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();doSend();}
