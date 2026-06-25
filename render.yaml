@@ -1,9 +1,9 @@
 services:
   - type: web
     name: botstwin
-    runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python discord_dashboard.py
+    runtime: node
+    buildCommand: npm install
+    startCommand: node discord_dashboard.js
     envVars:
       - key: PORT
         value: 8080
