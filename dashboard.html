@@ -813,7 +813,7 @@ function getMemberStatus(authorId){
 function buildMsg(msg){
   msgStore.set(msg.id,msg);
   var status=getMemberStatus(msg.author_id);
-  var el=document.createElement("div");el.className="msg-item"+(msg.notify?" notif":"");el.id="msg-"+msg.id;
+  var el=document.createElement("div");el.className="msg-item has-header"+(msg.notify?" notif":"");el.id="msg-"+msg.id;
   var h="";
   if(msg.reference){
     h+='<div class="ref-bar" data-rid="'+msg.reference.id+'"><i class="ti ti-corner-up-left"></i>'
