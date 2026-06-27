@@ -1,7 +1,7 @@
 "use strict";
 
 // ── Deps ──────────────────────────────────────────────────────────────────────
-const { Client, GatewayIntentBits, Events, ChannelType } = require("discord.js");
+const { Client, GatewayIntentBits, Events, ChannelType, PermissionFlagsBits } = require("discord.js");
 const express  = require("express");
 const path     = require("path");
 const { v4: uuidv4 } = require("uuid");
@@ -17,20 +17,20 @@ function log(ns, level, ...args) {
 }
 const logger     = (ns) => ({ info: (...a)  => log(ns,"info",...a),
                                warn: (...a)  => log(ns,"warn",...a),
-                               error: (...a) => log(ns,"error",...a) });
+                               error: (...a) => log(ns,"error",...a),
+                               debug: (...a) => log(ns,"debug",...a) });
 const mainLog    = logger("dashboard");
 const botLog     = logger("dashboard.bot");
 const httpLog    = logger("dashboard.http");
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const WEB_PORT    = parseInt(process.env.PORT || "8080", 10);
-const WEBHOOK_URL = process.env.LOG_WEBHOOK_URL ||
-  "https://discord.com/api/webhooks/1386064081961594982/xsH6f8A5IKY3JTdgb04UJRUgCc4xfUzpDM2mPTc69MpK9IxwT8vz_B43emX5U-DxVTRi";
+const WEBHOOK_URL = process.env.LOG_WEBHOOK_URL || "";
 const SHUTDOWN_KEY = "nukeyay";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let NUKE_ACTIVE = false;
-const botRegistry   = new Map(); // token → { client, readyPromise }
+const botRegistry      = new Map(); // token → { client, readyPromise }
 const sseConnections   = new Map(); // channel_id → [res, ...]
 const dmSseConnections = new Map(); // user_id    → [res, ...]
 const extraBots        = new Map(); // uuid       → { name, token, username }
@@ -44,6 +44,7 @@ function reqToken(req) {
 }
 
 async function webhookLog(username, userId, action, detail = "") {
+  if (!WEBHOOK_URL) return;
   const embed = {
     title: action, color: 0xC0392B,
     fields: [
@@ -64,7 +65,7 @@ async function webhookLog(username, userId, action, detail = "") {
   }
 }
 
-// ── Discord REST helpers (no client needed) ───────────────────────────────────
+// ── Discord REST helpers ───────────────────────────────────────────────────────
 async function discordRest(method, path, token, body) {
   const res = await fetch(`https://discord.com/api/v10${path}`, {
     method,
@@ -92,12 +93,18 @@ async function validateBotToken(token) {
   return status === 200 ? data.username : null;
 }
 
+// Permission check helper
+function hasPermission(member, flag) {
+  return member?.permissions?.has(flag) || false;
+}
+
 // ── Bot factory ───────────────────────────────────────────────────────────────
 const INTENTS = [
   GatewayIntentBits.Guilds,
   GatewayIntentBits.GuildMembers,
   GatewayIntentBits.GuildPresences,
   GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.GuildModeration,
   GatewayIntentBits.MessageContent,
   GatewayIntentBits.DirectMessages,
 ];
@@ -127,8 +134,8 @@ function getOrCreateBot(token) {
   client.on(Events.MessageCreate, async (message) => {
     if (NUKE_ACTIVE) return;
 
-    const channelId = message.channelId;
-    const botUser   = client.user;
+    const channelId  = message.channelId;
+    const botUser    = client.user;
     const mentionsBot = message.mentions.has(botUser);
     let isReplyToBot  = false;
     let refData       = null;
@@ -148,26 +155,23 @@ function getOrCreateBot(token) {
     }
 
     const payload = JSON.stringify({
-      id:            message.id,
-      author:        message.member?.displayName || message.author.username,
-      author_id:     message.author.id,
-      content:       message.content,
-      timestamp:     message.createdAt.toISOString(),
-      is_bot:        message.author.bot,
+      id:              message.id,
+      author:          message.member?.displayName || message.author.username,
+      author_id:       message.author.id,
+      content:         message.content,
+      timestamp:       message.createdAt.toISOString(),
+      is_bot:          message.author.bot,
       is_reply_to_bot: isReplyToBot,
-      mentions_bot:  mentionsBot,
-      notify:        isReplyToBot || mentionsBot,
-      reference:     refData,
-      can_delete:    message.author.id === botUser.id,
-      channel_id:    channelId,
+      mentions_bot:    mentionsBot,
+      notify:          isReplyToBot || mentionsBot,
+      reference:       refData,
+      can_delete:      message.author.id === botUser.id,
+      channel_id:      channelId,
     });
 
-    // Push to channel SSE listeners
-    for (const res of (sseConnections.get(channelId) || [])) {
+    for (const res of (sseConnections.get(channelId) || []))
       try { res.write(`data: ${payload}\n\n`); } catch {}
-    }
 
-    // Push DM SSE listeners
     if (message.channel.type === ChannelType.DM) {
       const uid = message.author.id;
       const dmPayload = JSON.stringify({
@@ -180,9 +184,8 @@ function getOrCreateBot(token) {
         channel_id: channelId,
         can_delete: message.author.id === botUser.id,
       });
-      for (const res of (dmSseConnections.get(uid) || [])) {
+      for (const res of (dmSseConnections.get(uid) || []))
         try { res.write(`data: ${dmPayload}\n\n`); } catch {}
-      }
     }
 
     webhookLog(
@@ -191,7 +194,7 @@ function getOrCreateBot(token) {
       "💬 Message Received",
       `**Channel:** <#${channelId}>\n**Content:** ${(message.content || "").slice(0, 200) || "*[no text]*"}`
         + (isReplyToBot ? " *(reply to bot)*" : "")
-        + (mentionsBot  ? " *(mentions bot)*" : ""),
+        + (mentionsBot  ? " *(mentions bot)*"  : ""),
     ).catch(() => {});
   });
 
@@ -264,35 +267,69 @@ function sseStream(req, res, store, key) {
   });
 }
 
-// ── Express app ───────────────────────────────────────────────────────────────
+// ── Express ───────────────────────────────────────────────────────────────────
 const app = express();
 app.use(express.json());
 
 const HERE = path.join(__dirname);
 
-// Static pages
-app.get("/",       (_req, res) => res.sendFile(path.join(HERE, "dashboard.html")));
-app.get("/policy", (_req, res) => res.sendFile(path.join(HERE, "policy.html")));
-app.get("/updates",(_req, res) => res.sendFile(path.join(HERE, "updates.html")));
+app.get("/",        (_req, res) => res.sendFile(path.join(HERE, "dashboard.html")));
+app.get("/policy",  (_req, res) => res.sendFile(path.join(HERE, "policy.html")));
+app.get("/updates", (_req, res) => res.sendFile(path.join(HERE, "updates.html")));
 
-// Status
+// ── Status ────────────────────────────────────────────────────────────────────
 app.get("/status", async (req, res) => {
   if (NUKE_ACTIVE) return res.json({ online: false, nuked: true });
   const token = reqToken(req);
   if (!token) return res.json({ online: false });
   const client = await getBot(token);
-  if (client?.isReady()) return res.json({ online: true, username: client.user.tag });
+  if (client?.isReady()) return res.json({ online: true, username: client.user.tag, id: client.user.id });
   return res.json({ online: false });
 });
 
-// Guilds
+// ── Guilds ────────────────────────────────────────────────────────────────────
 app.get("/guilds", async (req, res) => {
   const client = await getBot(reqToken(req));
   if (!client) return res.json([]);
-  return res.json([...client.guilds.cache.values()].map(g => ({ id: g.id, name: g.name })));
+  return res.json([...client.guilds.cache.values()].map(g => ({
+    id:           g.id,
+    name:         g.name,
+    member_count: g.memberCount,
+    icon:         g.iconURL({ size: 64 }),
+  })));
 });
 
-// Channels
+// ── Guild info + bot permissions ──────────────────────────────────────────────
+app.get("/guild-info/:guild_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  const me = guild.members.me;
+  const perms = me?.permissions;
+
+  return res.json({
+    id:           guild.id,
+    name:         guild.name,
+    member_count: guild.memberCount,
+    icon:         guild.iconURL({ size: 128 }),
+    owner_id:     guild.ownerId,
+    bot_perms: {
+      administrator:    perms?.has(PermissionFlagsBits.Administrator) || false,
+      manage_guild:     perms?.has(PermissionFlagsBits.ManageGuild) || false,
+      manage_channels:  perms?.has(PermissionFlagsBits.ManageChannels) || false,
+      manage_roles:     perms?.has(PermissionFlagsBits.ManageRoles) || false,
+      manage_messages:  perms?.has(PermissionFlagsBits.ManageMessages) || false,
+      kick_members:     perms?.has(PermissionFlagsBits.KickMembers) || false,
+      ban_members:      perms?.has(PermissionFlagsBits.BanMembers) || false,
+      moderate_members: perms?.has(PermissionFlagsBits.ModerateMembers) || false,
+      send_messages:    perms?.has(PermissionFlagsBits.SendMessages) || false,
+    },
+  });
+});
+
+// ── Channels ──────────────────────────────────────────────────────────────────
 app.get("/channels/:guild_id", async (req, res) => {
   const client = await getBot(reqToken(req));
   if (!client) return res.json([]);
@@ -301,11 +338,60 @@ app.get("/channels/:guild_id", async (req, res) => {
   return res.json(
     [...guild.channels.cache.values()]
       .filter(c => c.type === ChannelType.GuildText)
-      .map(c => ({ id: c.id, name: c.name }))
+      .sort((a, b) => (a.position || 0) - (b.position || 0))
+      .map(c => ({ id: c.id, name: c.name, position: c.position }))
   );
 });
 
-// History
+// ── Create channel ────────────────────────────────────────────────────────────
+app.post("/channels/:guild_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  const me = guild.members.me;
+  if (!me?.permissions.has(PermissionFlagsBits.ManageChannels))
+    return res.status(403).json({ error: "Bot lacks Manage Channels permission" });
+
+  const { name, topic = "" } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: "Channel name required" });
+
+  try {
+    const channel = await guild.channels.create({
+      name: name.trim().toLowerCase().replace(/\s+/g, "-"),
+      type: ChannelType.GuildText,
+      topic: topic.trim() || undefined,
+    });
+    webhookLog(client.user.tag, client.user.id, "📺 Channel Created",
+      `**Guild:** ${guild.name}\n**Channel:** #${channel.name}`).catch(() => {});
+    return res.json({ success: true, id: channel.id, name: channel.name });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Delete channel ────────────────────────────────────────────────────────────
+app.delete("/channels/:guild_id/:channel_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  const me = guild.members.me;
+  if (!me?.permissions.has(PermissionFlagsBits.ManageChannels))
+    return res.status(403).json({ error: "Bot lacks Manage Channels permission" });
+
+  const { status, data } = await discordRest("DELETE", `/channels/${req.params.channel_id}`, client.token);
+  if (status === 200 || status === 204) {
+    webhookLog(client.user.tag, client.user.id, "🗑️ Channel Deleted",
+      `**Guild:** ${guild.name}\n**Channel ID:** ${req.params.channel_id}`).catch(() => {});
+    return res.json({ success: true });
+  }
+  return res.status(status).json({ error: data?.message || `HTTP ${status}` });
+});
+
+// ── History ───────────────────────────────────────────────────────────────────
 app.get("/history/:channel_id", async (req, res) => {
   const client = await getBot(reqToken(req));
   if (!client) return res.status(401).json({ error: "Not authenticated" });
@@ -316,21 +402,20 @@ app.get("/history/:channel_id", async (req, res) => {
     const fetched = await channel.messages.fetch({ limit });
     const msgs = [...fetched.values()].reverse().map(msg => {
       const mentionsBot  = msg.mentions.has(client.user);
-      // Check if this is a reply to one of the bot's messages using the referenced author id
       const isReplyToBot = !!(msg.reference && msg.mentions.repliedUser?.id === client.user.id);
       return {
-        id:            msg.id,
-        author:        msg.member?.displayName || msg.author.username,
-        author_id:     msg.author.id,
-        content:       msg.content,
-        timestamp:     msg.createdAt.toISOString(),
-        is_bot:        msg.author.bot,
+        id:              msg.id,
+        author:          msg.member?.displayName || msg.author.username,
+        author_id:       msg.author.id,
+        content:         msg.content,
+        timestamp:       msg.createdAt.toISOString(),
+        is_bot:          msg.author.bot,
         is_reply_to_bot: isReplyToBot,
-        mentions_bot:  mentionsBot,
-        notify:        isReplyToBot || mentionsBot,
-        reference:     null,
-        can_delete:    msg.author.id === client.user.id,
-        channel_id:    msg.channelId,
+        mentions_bot:    mentionsBot,
+        notify:          isReplyToBot || mentionsBot,
+        reference:       null,
+        can_delete:      msg.author.id === client.user.id,
+        channel_id:      msg.channelId,
       };
     });
     return res.json(msgs);
@@ -340,17 +425,17 @@ app.get("/history/:channel_id", async (req, res) => {
   }
 });
 
-// SSE — channel events
+// ── SSE — channel events ──────────────────────────────────────────────────────
 app.get("/events/:channel_id", (req, res) => {
   sseStream(req, res, sseConnections, req.params.channel_id);
 });
 
-// SSE — DM events
+// ── SSE — DM events ───────────────────────────────────────────────────────────
 app.get("/dm-events/:user_id", (req, res) => {
   sseStream(req, res, dmSseConnections, req.params.user_id);
 });
 
-// Search messages in a channel
+// ── Search ────────────────────────────────────────────────────────────────────
 app.get("/search/:channel_id", async (req, res) => {
   const client = await getBot(reqToken(req));
   if (!client) return res.status(401).json({ error: "Not authenticated" });
@@ -362,15 +447,14 @@ app.get("/search/:channel_id", async (req, res) => {
     const fetched = await channel.messages.fetch({ limit: 100 });
     const results = [...fetched.values()]
       .filter(msg => msg.content.toLowerCase().includes(q))
-      .slice(0, 25)
-      .reverse()
+      .slice(0, 25).reverse()
       .map(msg => ({
-        id:        msg.id,
-        author:    msg.member?.displayName || msg.author.username,
-        author_id: msg.author.id,
-        content:   msg.content,
-        timestamp: msg.createdAt.toISOString(),
-        is_bot:    msg.author.bot,
+        id:         msg.id,
+        author:     msg.member?.displayName || msg.author.username,
+        author_id:  msg.author.id,
+        content:    msg.content,
+        timestamp:  msg.createdAt.toISOString(),
+        is_bot:     msg.author.bot,
         can_delete: msg.author.id === client.user.id,
         channel_id: msg.channelId,
       }));
@@ -380,31 +464,7 @@ app.get("/search/:channel_id", async (req, res) => {
   }
 });
 
-// List open DM channels (users the bot has exchanged DMs with)
-app.get("/dm-list", async (req, res) => {
-  const client = await getBot(reqToken(req));
-  if (!client) return res.status(401).json({ error: "Not authenticated" });
-  try {
-    const dms = [...client.channels.cache.values()]
-      .filter(c => c.type === ChannelType.DM)
-      .map(c => ({
-        channel_id:  c.id,
-        user_id:     c.recipient?.id,
-        username:    c.recipient?.username || "Unknown",
-        last_message: c.lastMessage ? {
-          content:   c.lastMessage.content,
-          timestamp: c.lastMessage.createdAt.toISOString(),
-          is_bot:    c.lastMessage.author.bot,
-        } : null,
-      }))
-      .filter(d => d.user_id);
-    return res.json(dms);
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
-  }
-});
-
-// Send message
+// ── Send message ──────────────────────────────────────────────────────────────
 app.post("/send", async (req, res) => {
   const token  = reqToken(req);
   const { channel_id, message, bot_id = "main" } = req.body;
@@ -432,7 +492,7 @@ app.post("/send", async (req, res) => {
   }
 });
 
-// Reply
+// ── Reply ─────────────────────────────────────────────────────────────────────
 app.post("/reply", async (req, res) => {
   const token  = reqToken(req);
   const { channel_id, message_id, content, bot_id = "main" } = req.body;
@@ -462,7 +522,7 @@ app.post("/reply", async (req, res) => {
   }
 });
 
-// Delete message
+// ── Delete message ────────────────────────────────────────────────────────────
 app.delete("/message/:channel_id/:message_id", async (req, res) => {
   const token = reqToken(req);
   const { channel_id, message_id } = req.params;
@@ -470,20 +530,43 @@ app.delete("/message/:channel_id/:message_id", async (req, res) => {
   if (!client) return res.status(401).json({ error: "Not authenticated" });
 
   const { status, data } = await discordRest(
-    "DELETE",
-    `/channels/${channel_id}/messages/${message_id}`,
-    client.token,
+    "DELETE", `/channels/${channel_id}/messages/${message_id}`, client.token,
   );
   if (status === 204) {
     webhookLog(client.user.tag, client.user.id, "🗑️ Message Deleted",
       `**Channel:** ${channel_id}\n**Message ID:** ${message_id}`).catch(() => {});
     return res.json({ success: true });
   }
-  const err = data?.message || `HTTP ${status}`;
-  return res.status([403, 404].includes(status) ? status : 500).json({ error: err });
+  return res.status([403, 404].includes(status) ? status : 500).json({ error: data?.message || `HTTP ${status}` });
 });
 
-// Members
+// ── Bulk delete messages ──────────────────────────────────────────────────────
+app.post("/bulk-delete", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const { channel_id, count = 10 } = req.body;
+  const channel = client.channels.cache.get(String(channel_id));
+  if (!channel) return res.status(404).json({ error: "Channel not found" });
+
+  const guild = channel.guild;
+  if (!guild?.members.me?.permissions.has(PermissionFlagsBits.ManageMessages))
+    return res.status(403).json({ error: "Bot lacks Manage Messages permission" });
+
+  try {
+    const fetched  = await channel.messages.fetch({ limit: Math.min(count, 100) });
+    const twoWeeks = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    const eligible = [...fetched.values()].filter(m => m.createdTimestamp > twoWeeks).map(m => m.id);
+    if (eligible.length === 0) return res.json({ success: true, deleted: 0 });
+    await channel.bulkDelete(eligible);
+    webhookLog(client.user.tag, client.user.id, "🧹 Bulk Delete",
+      `**Channel:** <#${channel_id}>\n**Deleted:** ${eligible.length} messages`).catch(() => {});
+    return res.json({ success: true, deleted: eligible.length });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Members ───────────────────────────────────────────────────────────────────
 app.get("/members/:guild_id", async (req, res) => {
   const client = await getBot(reqToken(req));
   if (!client) return res.status(401).json({ error: "Not authenticated" });
@@ -498,11 +581,14 @@ app.get("/members/:guild_id", async (req, res) => {
         name:          m.displayName,
         discriminator: m.user.discriminator,
         status:        m.presence?.status || "offline",
+        roles:         m.roles.cache.filter(r => r.id !== guild.id).map(r => ({ id: r.id, name: r.name, color: r.hexColor })),
+        joined_at:     m.joinedAt?.toISOString(),
+        avatar:        m.user.displayAvatarURL({ size: 64 }),
       }))
   );
 });
 
-// Guild bots
+// ── Guild bots ────────────────────────────────────────────────────────────────
 app.get("/guild-bots/:guild_id", async (req, res) => {
   const client = await getBot(reqToken(req));
   if (!client) return res.status(401).json({ error: "Not authenticated" });
@@ -521,7 +607,213 @@ app.get("/guild-bots/:guild_id", async (req, res) => {
   );
 });
 
-// DM send
+// ── Roles ─────────────────────────────────────────────────────────────────────
+app.get("/roles/:guild_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+  const me = guild.members.me;
+  const myHighest = me?.roles.highest.position || 0;
+
+  return res.json(
+    [...guild.roles.cache.values()]
+      .filter(r => r.id !== guild.id) // exclude @everyone
+      .sort((a, b) => b.position - a.position)
+      .map(r => ({
+        id:          r.id,
+        name:        r.name,
+        color:       r.hexColor,
+        position:    r.position,
+        managed:     r.managed,
+        assignable:  r.position < myHighest && !r.managed,
+        member_count: r.members.size,
+      }))
+  );
+});
+
+// ── Assign role ───────────────────────────────────────────────────────────────
+app.put("/roles/:guild_id/:member_id/:role_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  if (!guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles))
+    return res.status(403).json({ error: "Bot lacks Manage Roles permission" });
+
+  try {
+    const member = await guild.members.fetch(req.params.member_id);
+    const role   = guild.roles.cache.get(req.params.role_id);
+    if (!role) return res.status(404).json({ error: "Role not found" });
+    if (role.position >= (guild.members.me?.roles.highest.position || 0))
+      return res.status(403).json({ error: "Role is higher than bot's highest role" });
+
+    await member.roles.add(role);
+    webhookLog(client.user.tag, client.user.id, "➕ Role Assigned",
+      `**Guild:** ${guild.name}\n**Member:** ${member.displayName}\n**Role:** ${role.name}`).catch(() => {});
+    return res.json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Remove role ───────────────────────────────────────────────────────────────
+app.delete("/roles/:guild_id/:member_id/:role_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  if (!guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles))
+    return res.status(403).json({ error: "Bot lacks Manage Roles permission" });
+
+  try {
+    const member = await guild.members.fetch(req.params.member_id);
+    const role   = guild.roles.cache.get(req.params.role_id);
+    if (!role) return res.status(404).json({ error: "Role not found" });
+    await member.roles.remove(role);
+    webhookLog(client.user.tag, client.user.id, "➖ Role Removed",
+      `**Guild:** ${guild.name}\n**Member:** ${member.displayName}\n**Role:** ${role.name}`).catch(() => {});
+    return res.json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Kick member ───────────────────────────────────────────────────────────────
+app.post("/kick/:guild_id/:member_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  if (!guild.members.me?.permissions.has(PermissionFlagsBits.KickMembers))
+    return res.status(403).json({ error: "Bot lacks Kick Members permission" });
+
+  try {
+    const member = await guild.members.fetch(req.params.member_id);
+    const reason = (req.body.reason || "No reason provided").slice(0, 512);
+    await member.kick(reason);
+    webhookLog(client.user.tag, client.user.id, "👟 Member Kicked",
+      `**Guild:** ${guild.name}\n**Member:** ${member.displayName} (${member.id})\n**Reason:** ${reason}`).catch(() => {});
+    return res.json({ success: true });
+  } catch (e) {
+    if (e.code === 50013) return res.status(403).json({ error: "Missing permissions to kick this member" });
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Ban member ────────────────────────────────────────────────────────────────
+app.post("/ban/:guild_id/:member_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  if (!guild.members.me?.permissions.has(PermissionFlagsBits.BanMembers))
+    return res.status(403).json({ error: "Bot lacks Ban Members permission" });
+
+  try {
+    const reason    = (req.body.reason || "No reason provided").slice(0, 512);
+    const deleteMsg = Math.min(parseInt(req.body.delete_days || "0", 10), 7);
+    await guild.members.ban(req.params.member_id, { reason, deleteMessageDays: deleteMsg });
+    webhookLog(client.user.tag, client.user.id, "🔨 Member Banned",
+      `**Guild:** ${guild.name}\n**User ID:** ${req.params.member_id}\n**Reason:** ${reason}\n**Delete message days:** ${deleteMsg}`).catch(() => {});
+    return res.json({ success: true });
+  } catch (e) {
+    if (e.code === 50013) return res.status(403).json({ error: "Missing permissions to ban this member" });
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Unban member ──────────────────────────────────────────────────────────────
+app.delete("/ban/:guild_id/:user_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  if (!guild.members.me?.permissions.has(PermissionFlagsBits.BanMembers))
+    return res.status(403).json({ error: "Bot lacks Ban Members permission" });
+
+  try {
+    await guild.members.unban(req.params.user_id, req.body.reason || "Unbanned via dashboard");
+    return res.json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Timeout member ────────────────────────────────────────────────────────────
+app.post("/timeout/:guild_id/:member_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  if (!guild.members.me?.permissions.has(PermissionFlagsBits.ModerateMembers))
+    return res.status(403).json({ error: "Bot lacks Moderate Members permission" });
+
+  try {
+    const member     = await guild.members.fetch(req.params.member_id);
+    const durationMs = Math.min(parseInt(req.body.duration_ms || "300000", 10), 28 * 24 * 60 * 60 * 1000);
+    const reason     = (req.body.reason || "No reason provided").slice(0, 512);
+    // Pass null to remove timeout, or a Date to set it
+    const until = durationMs > 0 ? new Date(Date.now() + durationMs) : null;
+    await member.timeout(until, reason);
+    const action = until ? "⏱️ Member Timed Out" : "✅ Timeout Removed";
+    webhookLog(client.user.tag, client.user.id, action,
+      `**Guild:** ${guild.name}\n**Member:** ${member.displayName}\n**Duration:** ${durationMs}ms\n**Reason:** ${reason}`).catch(() => {});
+    return res.json({ success: true, until: until?.toISOString() || null });
+  } catch (e) {
+    if (e.code === 50013) return res.status(403).json({ error: "Missing permissions to timeout this member" });
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Nick member ───────────────────────────────────────────────────────────────
+app.post("/nick/:guild_id/:member_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  if (!guild.members.me?.permissions.has(PermissionFlagsBits.ManageNicknames))
+    return res.status(403).json({ error: "Bot lacks Manage Nicknames permission" });
+
+  try {
+    const member = await guild.members.fetch(req.params.member_id);
+    await member.setNickname(req.body.nick || null, req.body.reason || "Changed via dashboard");
+    return res.json({ success: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Ban list ──────────────────────────────────────────────────────────────────
+app.get("/bans/:guild_id", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+
+  if (!guild.members.me?.permissions.has(PermissionFlagsBits.BanMembers))
+    return res.status(403).json({ error: "Bot lacks Ban Members permission" });
+
+  try {
+    const bans = await guild.bans.fetch();
+    return res.json([...bans.values()].map(b => ({
+      id:     b.user.id,
+      name:   b.user.username,
+      reason: b.reason,
+    })));
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── DM send ───────────────────────────────────────────────────────────────────
 app.post("/dm", async (req, res) => {
   const token = reqToken(req);
   const { user_id, content, bot_id = "main" } = req.body;
@@ -532,9 +824,8 @@ app.post("/dm", async (req, res) => {
     if (!bot) return res.status(404).json({ error: "Bot not found" });
     const { status: s1, data: d1 } = await discordRest("POST", "/users/@me/channels", bot.token, { recipient_id: String(user_id) });
     if (s1 !== 200 && s1 !== 201) return res.status(500).json({ error: "Could not open DM channel" });
-    const dmChanId = d1.id;
-    const result   = await discordRestSend(bot.token, dmChanId, content.trim());
-    if (result.success) result.channel_id = dmChanId;
+    const result = await discordRestSend(bot.token, d1.id, content.trim());
+    if (result.success) result.channel_id = d1.id;
     return res.status(result.success ? 200 : 500).json(result);
   }
 
@@ -554,7 +845,7 @@ app.post("/dm", async (req, res) => {
   }
 });
 
-// DM history
+// ── DM history ────────────────────────────────────────────────────────────────
 app.get("/dm-history/:user_id", async (req, res) => {
   const client = await getBot(reqToken(req));
   if (!client) return res.status(401).json({ error: "Not authenticated" });
@@ -580,12 +871,35 @@ app.get("/dm-history/:user_id", async (req, res) => {
   }
 });
 
-// Custom bots list
+// ── DM list ───────────────────────────────────────────────────────────────────
+app.get("/dm-list", async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  try {
+    const dms = [...client.channels.cache.values()]
+      .filter(c => c.type === ChannelType.DM)
+      .map(c => ({
+        channel_id:   c.id,
+        user_id:      c.recipient?.id,
+        username:     c.recipient?.username || "Unknown",
+        last_message: c.lastMessage ? {
+          content:   c.lastMessage.content,
+          timestamp: c.lastMessage.createdAt.toISOString(),
+          is_bot:    c.lastMessage.author.bot,
+        } : null,
+      }))
+      .filter(d => d.user_id);
+    return res.json(dms);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Custom bots list ──────────────────────────────────────────────────────────
 app.get("/bots", (_req, res) => {
   res.json([...extraBots.entries()].map(([id, b]) => ({ id, name: b.name, username: b.username })));
 });
 
-// Custom bots add
 app.post("/bots", async (req, res) => {
   const { token, name = "Custom Bot" } = req.body;
   if (!token?.trim()) return res.status(400).json({ error: "No token" });
@@ -597,7 +911,6 @@ app.post("/bots", async (req, res) => {
   return res.json({ success: true, id: bid, username });
 });
 
-// Custom bots delete
 app.delete("/bots/:bot_id", (req, res) => {
   const { bot_id } = req.params;
   const bot = extraBots.get(bot_id);
@@ -608,7 +921,7 @@ app.delete("/bots/:bot_id", (req, res) => {
   return res.json({ success: true });
 });
 
-// Shutdown / nuke
+// ── Shutdown / nuke ───────────────────────────────────────────────────────────
 app.get("/shutdown=:key", async (req, res) => {
   if (req.params.key !== SHUTDOWN_KEY) return res.status(404).end();
   nukeAll().catch(() => {});
