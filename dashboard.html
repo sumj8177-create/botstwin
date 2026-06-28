@@ -297,6 +297,45 @@ textarea::placeholder{color:var(--mut)}
 .gate-note{font-size:12px;color:var(--mut);text-align:center;display:flex;
   align-items:center;justify-content:center;gap:5px}
 
+/* ── auth gate (dashboard login / register) ── */
+#authGate{position:fixed;inset:0;background:var(--deep);display:flex;
+  align-items:center;justify-content:center;z-index:10000}
+#authGate.hidden{display:none}
+.auth-card{background:var(--sb);border:1px solid var(--bord);border-radius:var(--r-xl);
+  padding:32px 28px;width:100%;max-width:420px;display:flex;flex-direction:column;
+  gap:18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.auth-logo{display:flex;align-items:center;justify-content:center;gap:12px}
+.auth-logo .logo{width:40px;height:40px}.auth-logo .logo i{font-size:20px}
+.auth-logo h2{font-size:22px;font-weight:700;color:var(--txt)}
+.auth-view{display:none;flex-direction:column;gap:14px}
+.auth-view.active{display:flex}
+.auth-tabs{display:flex;border-bottom:1px solid var(--bord);margin-bottom:4px}
+.auth-tab{flex:1;padding:10px;font-size:13px;font-weight:600;color:var(--mut);
+  cursor:pointer;border:none;background:none;font-family:inherit;border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:color .1s}
+.auth-tab.active{color:var(--txt);border-bottom-color:var(--acc)}
+.auth-field{display:flex;flex-direction:column;gap:6px}
+.auth-field label{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sub)}
+.auth-input{width:100%;background:var(--deep);border:none;border-radius:var(--r);
+  padding:11px 14px;font-family:inherit;font-size:14px;color:var(--txt);
+  outline:none;transition:box-shadow .15s}
+.auth-input:focus{box-shadow:0 0 0 2px var(--acc)}
+.auth-input::placeholder{color:var(--mut)}
+.auth-btn{width:100%;padding:12px;background:var(--acc);border:none;border-radius:var(--r);
+  color:#fff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+.auth-btn:hover{background:var(--acc2)}
+.auth-btn:disabled{background:var(--bord);color:var(--mut);cursor:not-allowed}
+.auth-err{font-size:12px;color:#f87171;text-align:center;min-height:16px;
+  display:flex;align-items:center;justify-content:center;gap:5px}
+.auth-ok{font-size:12px;color:var(--green);text-align:center;min-height:16px;
+  display:flex;align-items:center;justify-content:center;gap:5px}
+.auth-link{font-size:12px;color:var(--acc2);cursor:pointer;text-align:center;background:none;
+  border:none;font-family:inherit;padding:0;transition:color .1s;text-decoration:underline}
+.auth-link:hover{color:var(--txt)}
+.auth-setup-note{font-size:12px;color:var(--yel);text-align:center;line-height:1.5;
+  padding:8px 12px;background:rgba(240,178,50,.08);border-radius:var(--r);border:1px solid rgba(240,178,50,.2)}
+
 /* ── nuke overlay ── */
 #nukeOverlay{position:fixed;inset:0;background:var(--deep);display:none;
   align-items:center;justify-content:center;z-index:9998}
@@ -440,6 +479,64 @@ textarea::placeholder{color:var(--mut)}
 </style>
 </head>
 <body>
+
+<!-- Auth Gate (Dashboard Login / Register) -->
+<div id="authGate">
+  <div class="auth-card">
+    <div class="auth-logo"><div class="logo"><i class="ti ti-bolt"></i></div><h2>Bot Dashboard</h2></div>
+
+    <!-- login / register tabs -->
+    <div id="authTabRow" class="auth-tabs">
+      <button class="auth-tab active" onclick="showAuthView('login',this)">Sign In</button>
+      <button class="auth-tab" onclick="showAuthView('register',this)">Register</button>
+    </div>
+
+    <!-- setup mode notice -->
+    <div id="authSetupNote" class="auth-setup-note" style="display:none">
+      <i class="ti ti-info-circle"></i> No accounts exist yet — register to create the first account.
+    </div>
+
+    <!-- Login -->
+    <div class="auth-view active" id="authView-login">
+      <div class="auth-field"><label>Email</label><input class="auth-input" id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input class="auth-input" id="loginPassword" type="password" placeholder="Your password" autocomplete="current-password"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);cursor:pointer">
+        <input type="checkbox" id="loginRemember" style="accent-color:var(--acc)"> Remember me for 30 days
+      </label>
+      <div class="auth-err" id="loginErr"></div>
+      <button class="auth-btn" id="loginBtn" onclick="doAuthLogin()"><i class="ti ti-login"></i> Sign In</button>
+      <button class="auth-link" onclick="showAuthView('forgot')">Forgot your password?</button>
+    </div>
+
+    <!-- Register -->
+    <div class="auth-view" id="authView-register">
+      <div class="auth-field"><label>Username</label><input class="auth-input" id="regUsername" type="text" placeholder="Display name" autocomplete="username"></div>
+      <div class="auth-field"><label>Email</label><input class="auth-input" id="regEmail" type="email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input class="auth-input" id="regPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password"></div>
+      <div class="auth-err" id="regErr"></div>
+      <button class="auth-btn" id="regBtn" onclick="doAuthRegister()"><i class="ti ti-user-plus"></i> Create Account</button>
+    </div>
+
+    <!-- Forgot password -->
+    <div class="auth-view" id="authView-forgot">
+      <p style="font-size:13px;color:var(--sub);text-align:center;line-height:1.6">Enter your email and we'll send a reset link.</p>
+      <div class="auth-field"><label>Email</label><input class="auth-input" id="forgotEmail" type="email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-err" id="forgotErr"></div>
+      <div class="auth-ok" id="forgotOk" style="display:none"><i class="ti ti-mail"></i> If that email exists, a reset link was sent.</div>
+      <button class="auth-btn" id="forgotBtn" onclick="doForgotPassword()"><i class="ti ti-mail"></i> Send Reset Link</button>
+      <button class="auth-link" onclick="showAuthView('login')"><i class="ti ti-arrow-left" style="font-size:11px"></i> Back to Sign In</button>
+    </div>
+
+    <!-- Reset password (shown when ?token= is in URL) -->
+    <div class="auth-view" id="authView-reset">
+      <p style="font-size:13px;color:var(--sub);text-align:center;line-height:1.6">Enter a new password for your account.</p>
+      <div class="auth-field"><label>New Password</label><input class="auth-input" id="resetPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password"></div>
+      <div class="auth-err" id="resetErr"></div>
+      <div class="auth-ok" id="resetOk" style="display:none"><i class="ti ti-check"></i> Password changed! Redirecting…</div>
+      <button class="auth-btn" id="resetBtn" onclick="doResetPassword()"><i class="ti ti-lock"></i> Reset Password</button>
+    </div>
+  </div>
+</div>
 
 <!-- Token Gate -->
 <div id="tokenGate">
@@ -665,7 +762,7 @@ function statusDotClass(s){
   if(s==="online")return"online";if(s==="idle")return"idle";if(s==="dnd")return"dnd";return"offline";
 }
 
-/* ── token persistence ── */
+/* ── token persistence (bot token) ── */
 var TOKEN_TTL=5*60*60*1000;
 function saveToken(t){localStorage.setItem("bot_token",t);localStorage.setItem("bot_token_exp",String(Date.now()+TOKEN_TTL));}
 function loadToken(){var t=localStorage.getItem("bot_token"),e=parseInt(localStorage.getItem("bot_token_exp")||"0");if(t&&Date.now()<e)return t;clearToken();return"";}
@@ -678,9 +775,168 @@ function applyTokenHeader(opts){
 }
 var _origFetch=window.fetch;
 window.fetch=function(url,opts){
-  if(typeof url==="string"&&!url.startsWith("http"))opts=applyTokenHeader(opts||{});
-  return _origFetch.apply(this,[url,opts]);
+  if(typeof url==="string"&&!url.startsWith("http")){
+    opts=applyTokenHeader(opts||{});
+  }
+  return _origFetch.apply(this,[url,opts]).then(function(res){
+    // If backend returns 401 on any non-auth route, bounce to login
+    if(res.status===401&&typeof url==="string"&&!url.startsWith("/auth")){
+      showAuthGate();
+    }
+    return res;
+  });
 };
+
+/* ── dashboard auth ── */
+var _dashUser=null;
+var _resetToken=(new URLSearchParams(window.location.search)).get("token")||"";
+
+function showAuthGate(view){
+  document.getElementById("authGate").classList.remove("hidden");
+  if(view)showAuthView(view);
+}
+function hideAuthGate(){
+  document.getElementById("authGate").classList.add("hidden");
+}
+
+function showAuthView(view,tabEl){
+  document.querySelectorAll(".auth-view").forEach(function(v){v.classList.remove("active");});
+  var el=document.getElementById("authView-"+view);
+  if(el)el.classList.add("active");
+  // update tabs if applicable
+  if(tabEl){
+    document.querySelectorAll(".auth-tab").forEach(function(t){t.classList.remove("active");});
+    tabEl.classList.add("active");
+  } else if(view==="login"||view==="register"){
+    document.querySelectorAll(".auth-tab").forEach(function(t){
+      t.classList.toggle("active",t.textContent.trim().toLowerCase().replace(" ","")===view);
+    });
+  }
+  // hide tab row on forgot/reset views
+  var tabRow=document.getElementById("authTabRow");
+  if(tabRow)tabRow.style.display=(view==="forgot"||view==="reset")?"none":"";
+}
+
+function setAuthErr(id,msg){
+  var el=document.getElementById(id);
+  if(el)el.innerHTML=msg?'<i class="ti ti-alert-circle"></i> '+msg:"";
+}
+
+function doAuthLogin(){
+  var email=document.getElementById("loginEmail").value.trim();
+  var pass=document.getElementById("loginPassword").value;
+  var remember=document.getElementById("loginRemember").checked;
+  if(!email||!pass){setAuthErr("loginErr","Email and password required.");return;}
+  var btn=document.getElementById("loginBtn");
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader spinning"></i> Signing in…';
+  setAuthErr("loginErr","");
+  _origFetch("/auth/login",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({email:email,password:pass,rememberMe:remember})
+  }).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+  .then(function(res){
+    if(res.ok&&res.d.success){
+      _dashUser=res.d.user;
+      hideAuthGate();
+      onAuthSuccess();
+    } else {
+      setAuthErr("loginErr",res.d.error||"Login failed.");
+      btn.disabled=false;btn.innerHTML='<i class="ti ti-login"></i> Sign In';
+    }
+  }).catch(function(){
+    setAuthErr("loginErr","Could not reach server.");
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-login"></i> Sign In';
+  });
+}
+
+function doAuthRegister(){
+  var username=document.getElementById("regUsername").value.trim();
+  var email=document.getElementById("regEmail").value.trim();
+  var pass=document.getElementById("regPassword").value;
+  if(!username||!email||!pass){setAuthErr("regErr","All fields are required.");return;}
+  if(pass.length<8){setAuthErr("regErr","Password must be at least 8 characters.");return;}
+  var btn=document.getElementById("regBtn");
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader spinning"></i> Creating…';
+  setAuthErr("regErr","");
+  _origFetch("/auth/register",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({username:username,email:email,password:pass})
+  }).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+  .then(function(res){
+    if(res.ok&&res.d.success){
+      // auto-login after register
+      document.getElementById("loginEmail").value=email;
+      document.getElementById("loginPassword").value=pass;
+      showAuthView("login");
+      setTimeout(doAuthLogin,80);
+    } else {
+      setAuthErr("regErr",res.d.error||"Registration failed.");
+      btn.disabled=false;btn.innerHTML='<i class="ti ti-user-plus"></i> Create Account';
+    }
+  }).catch(function(){
+    setAuthErr("regErr","Could not reach server.");
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-user-plus"></i> Create Account';
+  });
+}
+
+function doForgotPassword(){
+  var email=document.getElementById("forgotEmail").value.trim();
+  if(!email){setAuthErr("forgotErr","Enter your email address.");return;}
+  var btn=document.getElementById("forgotBtn");
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader spinning"></i> Sending…';
+  setAuthErr("forgotErr","");
+  document.getElementById("forgotOk").style.display="none";
+  _origFetch("/auth/forgot-password",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({email:email})
+  }).then(function(){
+    document.getElementById("forgotOk").style.display="flex";
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-mail"></i> Send Reset Link';
+  }).catch(function(){
+    setAuthErr("forgotErr","Could not reach server.");
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-mail"></i> Send Reset Link';
+  });
+}
+
+function doResetPassword(){
+  var pass=document.getElementById("resetPassword").value;
+  if(!pass||pass.length<8){setAuthErr("resetErr","Password must be at least 8 characters.");return;}
+  var btn=document.getElementById("resetBtn");
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader spinning"></i> Resetting…';
+  setAuthErr("resetErr","");
+  _origFetch("/auth/reset-password",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({token:_resetToken,password:pass})
+  }).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+  .then(function(res){
+    if(res.ok&&res.d.success){
+      document.getElementById("resetOk").style.display="flex";
+      clearToken();SESSION_TOKEN="";
+      setTimeout(function(){
+        window.history.replaceState({},"",window.location.pathname);
+        _resetToken="";showAuthView("login");
+      },2000);
+    } else {
+      setAuthErr("resetErr",res.d.error||"Reset failed. Link may have expired.");
+      btn.disabled=false;btn.innerHTML='<i class="ti ti-lock"></i> Reset Password';
+    }
+  }).catch(function(){
+    setAuthErr("resetErr","Could not reach server.");
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-lock"></i> Reset Password';
+  });
+}
+
+function onAuthSuccess(){
+  // Update logout button label to show username
+  var lb=document.getElementById("logoutBtn");
+  if(lb&&_dashUser)lb.title="Signed in as "+_dashUser.username;
+  // Show token gate if no bot token saved, otherwise continue as before
+  if(SESSION_TOKEN){
+    submitToken();
+  } else {
+    document.getElementById("tokenGate").classList.remove("hidden");
+  }
+}
 
 /* ── gate ── */
 function toggleEye(){
@@ -716,7 +972,41 @@ function submitToken(){
 }
 document.addEventListener("DOMContentLoaded",function(){
   document.getElementById("gateToken").addEventListener("keydown",function(e){if(e.key==="Enter")submitToken();});
-  if(SESSION_TOKEN)submitToken();
+  // Auth input enter-key shortcuts
+  ["loginEmail","loginPassword"].forEach(function(id){
+    document.getElementById(id).addEventListener("keydown",function(e){if(e.key==="Enter")doAuthLogin();});
+  });
+  ["regUsername","regEmail","regPassword"].forEach(function(id){
+    document.getElementById(id).addEventListener("keydown",function(e){if(e.key==="Enter")doAuthRegister();});
+  });
+  document.getElementById("forgotEmail").addEventListener("keydown",function(e){if(e.key==="Enter")doForgotPassword();});
+  document.getElementById("resetPassword").addEventListener("keydown",function(e){if(e.key==="Enter")doResetPassword();});
+
+  // Handle password reset link
+  if(_resetToken){
+    _origFetch("/auth/validate-reset?token="+encodeURIComponent(_resetToken))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.valid){showAuthView("reset");}
+        else{setAuthErr("resetErr","This reset link is invalid or expired.");showAuthView("reset");}
+      }).catch(function(){showAuthView("reset");});
+    return; // auth gate already shown
+  }
+
+  // Check if already authenticated via cookie
+  _origFetch("/auth/me").then(function(r){return r.json();}).then(function(d){
+    if(d.setupMode){
+      // No accounts — show register view with setup notice
+      document.getElementById("authSetupNote").style.display="block";
+      showAuthView("register");
+    } else if(d.loggedIn){
+      _dashUser=d;
+      hideAuthGate();
+      onAuthSuccess();
+    } else {
+      showAuthView("login");
+    }
+  }).catch(function(){showAuthView("login");});
 });
 
 /* ── nuke / logout ── */
@@ -727,7 +1017,8 @@ function showNukeOverlay(){
   document.getElementById("nukeOverlay").classList.add("show");
 }
 function doLogout(){
-  clearToken();SESSION_TOKEN="";stopPolling();
+  _origFetch("/auth/logout",{method:"POST"}).catch(function(){});
+  _dashUser=null;clearToken();SESSION_TOKEN="";stopPolling();
   if(evtSrc){evtSrc.close();evtSrc=null;}
   if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
   curServer=null;curChan=null;curChanId=null;replyMsg=null;notifCount=0;lastNotifId=null;
@@ -748,7 +1039,11 @@ function doLogout(){
   document.getElementById("tokenGate").classList.remove("hidden");
   document.getElementById("gateToken").value="";
   document.getElementById("gateError").innerHTML="";
-  document.getElementById("gateToken").focus();
+  // Show the dashboard auth gate (login screen) on top
+  document.getElementById("loginPassword").value="";
+  setAuthErr("loginErr","");
+  showAuthView("login");
+  showAuthGate();
 }
 function reloginAfterNuke(){
   document.getElementById("nukeOverlay").classList.remove("show");
