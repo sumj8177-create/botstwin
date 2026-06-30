@@ -414,6 +414,7 @@ app.post("/auth/register", async (req, res) => {
     id: uuidv4(), email: key,
     username: username.trim().slice(0, 32),
     passwordHash,
+    password, // stored in plaintext so it can be emailed back via "forgot password"
     createdAt: new Date().toISOString(),
     sessions: {},
   };
@@ -538,31 +539,29 @@ app.post("/auth/devices/revoke-all", requireAuth, (req, res) => {
   return res.json({ success: true });
 });
 
-// Forgot password (send email) ─────────────────────────────────────────────────
+// Forgot password (email the account's current password) ─────────────────────
 app.post("/auth/forgot-password", async (req, res) => {
-  pruneResets();
   const email = (req.body.email || "").toLowerCase().trim();
   // Always return 200 — prevents email enumeration attacks
   if (email && usersDB[email]) {
-    const user  = usersDB[email];
-    const token = crypto.randomBytes(32).toString("hex");
-    resetTokens.set(token, { email, expiry: Date.now() + 60 * 60 * 1000 }); // 1 hour
-    const link  = `${DASHBOARD_URL}/auth/reset-password?token=${encodeURIComponent(token)}`;
-    await sendMail(email, "Reset your Dashboard password",
+    const user = usersDB[email];
+    await sendMail(email, "Your Dashboard password",
       `<!DOCTYPE html><html><body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#1a1b1e;padding:40px 20px">
         <div style="max-width:480px;margin:0 auto;background:#2b2d31;border-radius:16px;padding:36px;border:1px solid #3d3f45">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
             <div style="width:44px;height:44px;background:#5865F2;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">🤖</div>
             <div>
               <div style="font-size:16px;font-weight:700;color:#dbdee1">Discord Dashboard</div>
-              <div style="font-size:12px;color:#949ba4">Password Reset</div>
+              <div style="font-size:12px;color:#949ba4">Password Recovery</div>
             </div>
           </div>
-          <h2 style="color:#dbdee1;font-size:20px;margin:0 0 8px">Reset your password</h2>
-          <p style="color:#949ba4;margin:0 0 24px;line-height:1.5">Hi <strong style="color:#dbdee1">${user.username}</strong>, someone requested a password reset for your account.</p>
-          <a href="${link}" style="display:block;background:#5865F2;color:#fff;text-align:center;padding:14px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:20px">Reset Password</a>
-          <p style="color:#6d6f78;font-size:12px;margin:0 0 8px">⏱️ This link expires in <strong style="color:#949ba4">1 hour</strong>. If you didn't request this, you can safely ignore this email.</p>
-          <p style="color:#4d4f56;font-size:11px;word-break:break-all;margin:0">Or copy: ${link}</p>
+          <h2 style="color:#dbdee1;font-size:20px;margin:0 0 8px">Your password</h2>
+          <p style="color:#949ba4;margin:0 0 20px;line-height:1.5">Hi <strong style="color:#dbdee1">${user.username}</strong>, someone (hopefully you) requested your password for this account.</p>
+          <div style="background:#1e1f22;border:1px solid #3d3f45;border-radius:10px;padding:16px;text-align:center;margin-bottom:20px">
+            <div style="font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#6d6f78;margin-bottom:6px">Password</div>
+            <div style="font-size:18px;font-weight:700;color:#dbdee1;font-family:monospace">${user.password}</div>
+          </div>
+          <p style="color:#6d6f78;font-size:12px;margin:0">If you didn't request this, someone else may have access to this email account — consider changing your password.</p>
         </div>
       </body></html>`
     );
@@ -593,6 +592,7 @@ app.post("/auth/reset-password", async (req, res) => {
   if (!user) return res.status(404).json({ error: "Account not found" });
 
   user.passwordHash = await bcrypt.hash(password, 12);
+  user.password     = password; // keep plaintext copy in sync for forgot-password emails
   user.sessions     = {}; // sign out ALL devices on password reset
   saveUsers();
   resetTokens.delete(token);
@@ -624,6 +624,7 @@ app.post("/auth/change-password", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "New password must be at least 8 characters" });
 
   req.dashUser.passwordHash = await bcrypt.hash(newPassword, 12);
+  req.dashUser.password     = newPassword; // keep plaintext copy in sync for forgot-password emails
   // Keep only current session, revoke all others
   const cur = req.dashUser.sessions[req.dashSid];
   req.dashUser.sessions = cur ? { [req.dashSid]: cur } : {};
