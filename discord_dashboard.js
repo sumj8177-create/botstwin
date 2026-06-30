@@ -64,6 +64,36 @@ async function storageReq(method, urlPath, body) {
   }
 }
 
+// "Email" replacement: no SMTP is configured, so deliver these notifications
+// (password reset links, password-changed confirmations) as embeds into the
+// same storage channel the bot already uses. Strips the HTML down to plain
+// text/links since Discord messages aren't HTML.
+async function sendMail(to, subject, html) {
+  const text = String(html)
+    .replace(/<a href="([^"]+)"[^>]*>.*?<\/a>/gi, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  try {
+    const { status } = await storageReq("POST", `/channels/${STORAGE_CHANNEL}/messages`, {
+      embeds: [{
+        title: `📧 ${subject}`,
+        description: `**To:** ${to}\n\n${text.slice(0, 3800)}`,
+        color: 0x5865F2,
+        timestamp: new Date().toISOString(),
+      }],
+    });
+    if (status >= 200 && status < 300) {
+      mainLog.info(`✉️  "${subject}" for ${to} → delivered to Discord channel (no SMTP configured)`);
+    } else {
+      mainLog.warn(`✉️  "${subject}" for ${to} → Discord delivery failed (status ${status})`);
+    }
+  } catch (e) {
+    mainLog.error("sendMail (discord) failed:", e.message);
+  }
+}
+
 // Save full usersDB to Discord channel (chunked if needed)
 async function discordSave() {
   try {
