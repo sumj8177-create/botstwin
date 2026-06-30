@@ -377,22 +377,17 @@ app.use(cookieParser());
 app.set("trust proxy", true);
 
 // ── Page Routes ───────────────────────────────────────────────────────────────
-// Root: redirect to /auth if accounts exist and user isn't logged in
-app.get("/", (req, res) => {
-  if (Object.keys(usersDB).length > 0) {
-    const token = getJWT(req);
-    if (!token) return res.redirect("/auth");
-    try {
-      const { email, sessionId } = jwt.verify(token, JWT_SECRET);
-      const user = usersDB[email];
-      if (!user?.sessions?.[sessionId]) return res.redirect("/auth");
-    } catch { return res.redirect("/auth"); }
-  }
-  res.sendFile(path.join(HERE, "dashboard.html"));
-});
+// dashboard.html is a self-contained SPA: it has its own auth-gate overlay and
+// checks /auth/me itself on load to decide whether to show the login screen or
+// the dashboard. So every page route just serves the same file — no redirects,
+// no separate auth.html needed. (The /auth/reset-password route exists only so
+// the link in the password-reset email lands somewhere that still has the
+// ?token=... in the URL for the page's own JS to pick up.)
+const serveDashboard = (_req, res) => res.sendFile(path.join(HERE, "dashboard.html"));
 
-app.get("/auth",                  (_req, res) => res.sendFile(path.join(HERE, "auth.html")));
-app.get("/auth/reset-password",   (_req, res) => res.sendFile(path.join(HERE, "auth.html")));
+app.get("/",                      serveDashboard);
+app.get("/auth",                  serveDashboard);
+app.get("/auth/reset-password",   serveDashboard);
 app.get("/policy",                (_req, res) => res.sendFile(path.join(HERE, "policy.html")));
 app.get("/updates",               (_req, res) => res.sendFile(path.join(HERE, "updates.html")));
 
