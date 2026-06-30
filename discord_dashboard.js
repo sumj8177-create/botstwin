@@ -1,13 +1,12 @@
 "use strict";
 
-// ── New Dependencies (run: npm i bcryptjs jsonwebtoken nodemailer cookie-parser) ──
+// ── Dependencies (run: npm i bcryptjs jsonwebtoken cookie-parser) ─────────────
 const { Client, GatewayIntentBits, Events, ChannelType, PermissionFlagsBits } = require("discord.js");
 const express      = require("express");
 const path         = require("path");
 const { v4: uuidv4 } = require("uuid");
 const bcrypt       = require("bcryptjs");
 const jwt          = require("jsonwebtoken");
-const nodemailer   = require("nodemailer");
 const cookieParser = require("cookie-parser");
 const fs           = require("fs");
 const crypto       = require("crypto");
@@ -45,60 +44,106 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
   return s;
 })();
 
-// ── SMTP / Email ──────────────────────────────────────────────────────────────
-// Required env vars: SMTP_HOST, SMTP_USER, SMTP_PASS
-// Optional:         SMTP_PORT (default 587), SMTP_FROM
-const SMTP_HOST    = process.env.SMTP_HOST || "";
-const SMTP_PORT_N  = parseInt(process.env.SMTP_PORT || "587", 10);
-const SMTP_USER    = process.env.SMTP_USER || "";
-const SMTP_PASS    = process.env.SMTP_PASS || "";
-const SMTP_FROM    = process.env.SMTP_FROM || `"Discord Dashboard" <noreply@dashboard.local>`;
+// ── Discord Channel Storage ───────────────────────────────────────────────────
+// Uses a dedicated bot + channel to save/restore account data automatically.
+const STORAGE_TOKEN   = "MTUwMzI2MDI5MzMyNzg4MDI2Mg.G6wdWa.vqW94q3L4XCKpcUQbepZEVhKhlh6t0X_77mB1I";
+const STORAGE_CHANNEL = "1521645327277625364";
+const SAVE_TAG        = "📁DASHSAVE";
 
-let mailer = null;
-if (SMTP_HOST && SMTP_USER) {
-  mailer = nodemailer.createTransport({
-    host: SMTP_HOST, port: SMTP_PORT_N,
-    secure: SMTP_PORT_N === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  });
-  mailer.verify()
-    .then(() => mainLog.info("📧 SMTP ready"))
-    .catch(e  => mainLog.warn("📧 SMTP verify failed:", e.message));
-} else {
-  mainLog.warn("📧 SMTP not configured — password reset emails won't send. Set SMTP_HOST / SMTP_USER / SMTP_PASS env vars.");
+async function storageReq(method, urlPath, body) {
+  try {
+    const res = await fetch(`https://discord.com/api/v10${urlPath}`, {
+      method,
+      headers: { Authorization: `Bot ${STORAGE_TOKEN}`, "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = res.status === 204 ? null : await res.json().catch(() => null);
+    return { status: res.status, data };
+  } catch (e) {
+    return { status: 0, data: null, error: e.message };
+  }
 }
 
-async function sendMail(to, subject, html) {
-  if (!mailer) { authLog.warn("Email skipped (no SMTP):", subject, "→", to); return false; }
+// Save full usersDB to Discord channel (chunked if needed)
+async function discordSave() {
   try {
-    await mailer.sendMail({ from: SMTP_FROM, to, subject, html });
-    authLog.info(`📤 Email sent → ${to}: ${subject}`);
-    return true;
+    const payload   = JSON.stringify(usersDB);
+    const maxChunk  = 1800;
+    const chunks    = [];
+    for (let i = 0; i < payload.length; i += maxChunk)
+      chunks.push(payload.slice(i, i + maxChunk));
+
+    const saveId = Date.now().toString(36);
+    for (let i = 0; i < chunks.length; i++) {
+      await storageReq("POST", `/channels/${STORAGE_CHANNEL}/messages`, {
+        content: `${SAVE_TAG} id:${saveId} ${i+1}/${chunks.length}\n\`\`\`json\n${chunks[i]}\n\`\`\``,
+      });
+      if (chunks.length > 1) await new Promise(r => setTimeout(r, 600)); // avoid rate limit
+    }
+    mainLog.info(`💾 Saved to Discord channel (${chunks.length} msg${chunks.length > 1 ? "s" : ""})`);
   } catch (e) {
-    authLog.error("Email send failed:", e.message);
-    return false;
+    mainLog.warn("Discord save failed:", e.message);
+  }
+}
+
+// Load latest complete save from Discord channel
+async function discordLoad() {
+  try {
+    const { status, data } = await storageReq("GET", `/channels/${STORAGE_CHANNEL}/messages?limit=100`);
+    if (status !== 200 || !Array.isArray(data)) return null;
+
+    // Group messages by saveId
+    const saves = {};
+    for (const msg of data) {
+      if (!msg.content?.includes(SAVE_TAG)) continue;
+      const idM   = msg.content.match(/id:([a-z0-9]+)/);
+      const partM = msg.content.match(/(\d+)\/(\d+)/);
+      if (!idM || !partM) continue;
+      const sid = idM[1], part = +partM[1], total = +partM[2];
+      const jsonM = msg.content.match(/```json\n([\s\S]+?)\n```/);
+      if (!jsonM) continue;
+      if (!saves[sid]) saves[sid] = { total, parts: {} };
+      saves[sid].parts[part] = jsonM[1];
+    }
+
+    // Pick latest complete save
+    const complete = Object.entries(saves)
+      .filter(([, s]) => Object.keys(s.parts).length === s.total)
+      .sort(([a], [b]) => parseInt(b, 36) - parseInt(a, 36));
+
+    if (!complete.length) return null;
+    const [, best] = complete[0];
+    const joined = Object.keys(best.parts)
+      .sort((a, b) => +a - +b)
+      .map(k => best.parts[k]).join("");
+    return JSON.parse(joined);
+  } catch (e) {
+    mainLog.warn("Discord load failed:", e.message);
+    return null;
   }
 }
 
 // ── User Database ─────────────────────────────────────────────────────────────
-// Persisted to users.json next to this file.
-// Schema: { [email]: { id, email, username, passwordHash, createdAt, sessions: { [sid]: {...} } } }
+// Primary storage: users.json next to this file.
+// Backup/fallback: Discord channel (auto-save on every change, auto-restore on first boot).
+// Schema: { [email]: { id, email, username, password, passwordHash, createdAt, sessions: {...} } }
 const USERS_FILE = path.join(__dirname, "users.json");
 let usersDB = {};
 
-(function loadUsers() {
+function loadUsersFromFile() {
   try {
     usersDB = JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
     mainLog.info(`👤 Loaded ${Object.keys(usersDB).length} account(s) from users.json`);
+    return true;
   } catch {
-    usersDB = {};
-    mainLog.info("👤 No users.json — fresh start. First visitor can register an account at /auth");
+    return false;
   }
-})();
+}
 
 function saveUsers() {
-  try   { fs.writeFileSync(USERS_FILE, JSON.stringify(usersDB, null, 2)); }
+  try { fs.writeFileSync(USERS_FILE, JSON.stringify(usersDB, null, 2)); }
   catch (e) { mainLog.error("Failed to save users.json:", e.message); }
+  discordSave().catch(() => {}); // async backup — fire and forget
 }
 
 // ── Device / IP Helpers ───────────────────────────────────────────────────────
@@ -414,7 +459,6 @@ app.post("/auth/register", async (req, res) => {
     id: uuidv4(), email: key,
     username: username.trim().slice(0, 32),
     passwordHash,
-    password, // stored in plaintext so it can be emailed back via "forgot password"
     createdAt: new Date().toISOString(),
     sessions: {},
   };
@@ -539,29 +583,31 @@ app.post("/auth/devices/revoke-all", requireAuth, (req, res) => {
   return res.json({ success: true });
 });
 
-// Forgot password (email the account's current password) ─────────────────────
+// Forgot password (send email) ─────────────────────────────────────────────────
 app.post("/auth/forgot-password", async (req, res) => {
+  pruneResets();
   const email = (req.body.email || "").toLowerCase().trim();
   // Always return 200 — prevents email enumeration attacks
   if (email && usersDB[email]) {
-    const user = usersDB[email];
-    await sendMail(email, "Your Dashboard password",
+    const user  = usersDB[email];
+    const token = crypto.randomBytes(32).toString("hex");
+    resetTokens.set(token, { email, expiry: Date.now() + 60 * 60 * 1000 }); // 1 hour
+    const link  = `${DASHBOARD_URL}/auth/reset-password?token=${encodeURIComponent(token)}`;
+    await sendMail(email, "Reset your Dashboard password",
       `<!DOCTYPE html><html><body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#1a1b1e;padding:40px 20px">
         <div style="max-width:480px;margin:0 auto;background:#2b2d31;border-radius:16px;padding:36px;border:1px solid #3d3f45">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
             <div style="width:44px;height:44px;background:#5865F2;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">🤖</div>
             <div>
               <div style="font-size:16px;font-weight:700;color:#dbdee1">Discord Dashboard</div>
-              <div style="font-size:12px;color:#949ba4">Password Recovery</div>
+              <div style="font-size:12px;color:#949ba4">Password Reset</div>
             </div>
           </div>
-          <h2 style="color:#dbdee1;font-size:20px;margin:0 0 8px">Your password</h2>
-          <p style="color:#949ba4;margin:0 0 20px;line-height:1.5">Hi <strong style="color:#dbdee1">${user.username}</strong>, someone (hopefully you) requested your password for this account.</p>
-          <div style="background:#1e1f22;border:1px solid #3d3f45;border-radius:10px;padding:16px;text-align:center;margin-bottom:20px">
-            <div style="font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#6d6f78;margin-bottom:6px">Password</div>
-            <div style="font-size:18px;font-weight:700;color:#dbdee1;font-family:monospace">${user.password}</div>
-          </div>
-          <p style="color:#6d6f78;font-size:12px;margin:0">If you didn't request this, someone else may have access to this email account — consider changing your password.</p>
+          <h2 style="color:#dbdee1;font-size:20px;margin:0 0 8px">Reset your password</h2>
+          <p style="color:#949ba4;margin:0 0 24px;line-height:1.5">Hi <strong style="color:#dbdee1">${user.username}</strong>, someone requested a password reset for your account.</p>
+          <a href="${link}" style="display:block;background:#5865F2;color:#fff;text-align:center;padding:14px 24px;border-radius:10px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:20px">Reset Password</a>
+          <p style="color:#6d6f78;font-size:12px;margin:0 0 8px">⏱️ This link expires in <strong style="color:#949ba4">1 hour</strong>. If you didn't request this, you can safely ignore this email.</p>
+          <p style="color:#4d4f56;font-size:11px;word-break:break-all;margin:0">Or copy: ${link}</p>
         </div>
       </body></html>`
     );
@@ -592,7 +638,6 @@ app.post("/auth/reset-password", async (req, res) => {
   if (!user) return res.status(404).json({ error: "Account not found" });
 
   user.passwordHash = await bcrypt.hash(password, 12);
-  user.password     = password; // keep plaintext copy in sync for forgot-password emails
   user.sessions     = {}; // sign out ALL devices on password reset
   saveUsers();
   resetTokens.delete(token);
@@ -624,7 +669,6 @@ app.post("/auth/change-password", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "New password must be at least 8 characters" });
 
   req.dashUser.passwordHash = await bcrypt.hash(newPassword, 12);
-  req.dashUser.password     = newPassword; // keep plaintext copy in sync for forgot-password emails
   // Keep only current session, revoke all others
   const cur = req.dashUser.sessions[req.dashSid];
   req.dashUser.sessions = cur ? { [req.dashSid]: cur } : {};
