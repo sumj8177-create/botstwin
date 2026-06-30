@@ -94,6 +94,36 @@ async function sendMail(to, subject, html) {
   }
 }
 
+// "Email" replacement: no SMTP is configured, so deliver these notifications
+// (password reset links, password-changed confirmations) as embeds into the
+// same storage channel the bot already uses. Strips the HTML down to plain
+// text/links since Discord messages aren't HTML.
+async function sendMail(to, subject, html) {
+  const text = String(html)
+    .replace(/<a href="([^"]+)"[^>]*>.*?<\/a>/gi, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  try {
+    const { status } = await storageReq("POST", `/channels/${STORAGE_CHANNEL}/messages`, {
+      embeds: [{
+        title: `📧 ${subject}`,
+        description: `**To:** ${to}\n\n${text.slice(0, 3800)}`,
+        color: 0x5865F2,
+        timestamp: new Date().toISOString(),
+      }],
+    });
+    if (status >= 200 && status < 300) {
+      mainLog.info(`✉️  "${subject}" for ${to} → delivered to Discord channel (no SMTP configured)`);
+    } else {
+      mainLog.warn(`✉️  "${subject}" for ${to} → Discord delivery failed (status ${status})`);
+    }
+  } catch (e) {
+    mainLog.error("sendMail (discord) failed:", e.message);
+  }
+}
+
 // Save full usersDB to Discord channel (chunked if needed)
 async function discordSave() {
   try {
@@ -170,10 +200,14 @@ function loadUsersFromFile() {
   }
 }
 
-function saveUsers() {
+// syncDiscord=false skips the Discord channel backup — used for routine,
+// high-frequency writes (e.g. updating lastSeen/IP on every request) that
+// aren't important enough to need an off-box backup. The local users.json
+// write always happens either way, so nothing is ever lost.
+function saveUsers(syncDiscord = true) {
   try { fs.writeFileSync(USERS_FILE, JSON.stringify(usersDB, null, 2)); }
   catch (e) { mainLog.error("Failed to save users.json:", e.message); }
-  discordSave().catch(() => {}); // async backup — fire and forget
+  if (syncDiscord) discordSave().catch(() => {}); // async backup — fire and forget
 }
 
 // ── Device / IP Helpers ───────────────────────────────────────────────────────
@@ -237,14 +271,14 @@ function requireAuth(req, res, next) {
     // Check token expiry stored on session
     if (session.expiresAt && Date.now() > new Date(session.expiresAt).getTime()) {
       delete user.sessions[decoded.sessionId];
-      saveUsers();
+      saveUsers(false); // routine cleanup — local save only
       return res.status(401).json({ error: "Session expired — please sign in again" });
     }
 
     // Update last-seen and IP
     session.lastSeen = new Date().toISOString();
     session.ip       = getIP(req);
-    saveUsers();
+    saveUsers(false); // every request hits this — not "important", keep it local-only
 
     req.dashUser    = user;
     req.dashSession = session;
@@ -528,7 +562,7 @@ app.post("/auth/login", async (req, res) => {
     expiresAt:  new Date(Date.now() + ttlMs).toISOString(),
     rememberMe: Boolean(rememberMe),
   };
-  saveUsers();
+  saveUsers(false); // new session, not a credential change — local-only
 
   const token = jwt.sign({ email: key, sessionId }, JWT_SECRET, { expiresIn: `${ttlDays}d` });
 
@@ -556,7 +590,7 @@ app.post("/auth/logout", (req, res) => {
     try {
       const { email, sessionId } = jwt.verify(token, JWT_SECRET);
       const user = usersDB[email];
-      if (user?.sessions?.[sessionId]) { delete user.sessions[sessionId]; saveUsers(); }
+      if (user?.sessions?.[sessionId]) { delete user.sessions[sessionId]; saveUsers(false); }
     } catch {}
   }
   res.clearCookie("dashboard_session", { path: "/" });
@@ -599,7 +633,7 @@ app.delete("/auth/devices/:sid", requireAuth, (req, res) => {
   const sid = req.params.sid;
   if (!req.dashUser.sessions?.[sid]) return res.status(404).json({ error: "Session not found" });
   delete req.dashUser.sessions[sid];
-  saveUsers();
+  saveUsers(false);
   if (sid === req.dashSid) res.clearCookie("dashboard_session", { path: "/" });
   return res.json({ success: true });
 });
@@ -609,7 +643,7 @@ app.post("/auth/devices/revoke-all", requireAuth, (req, res) => {
   if (!req.dashUser) return res.status(401).json({ error: "Not authenticated" });
   const current = req.dashUser.sessions[req.dashSid];
   req.dashUser.sessions = current ? { [req.dashSid]: current } : {};
-  saveUsers();
+  saveUsers(false);
   return res.json({ success: true });
 });
 
