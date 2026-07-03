@@ -2,7 +2,8 @@
 
 // ── Dependencies (run: npm i bcryptjs jsonwebtoken cookie-parser) ─────────────
 const { Client, GatewayIntentBits, Events, ChannelType, PermissionFlagsBits } = require("discord.js");
-const express      = require("express");
+  const express      = require("exp
+                               ress");
 const path         = require("path");
 const { v4: uuidv4 } = require("uuid");
 const bcrypt       = require("bcryptjs");
