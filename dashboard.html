@@ -1,0 +1,1889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bot Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#313338;--sb:#2B2D31;--deep:#1E1F22;--panel:#2B2D31;
+  --surf:#35373C;--comp:#383A40;--bord:#3F4147;
+  --acc:#5865F2;--acc2:#7289da;--adim:rgba(88,101,242,.15);
+  --green:#23A559;--red:#F23F43;--yel:#F0B232;--idle:#F0B232;--dnd:#F23F43;--pink:#EB459E;
+  --txt:#DBDEE1;--sub:#B5BAC1;--mut:#80848E;
+  --r:4px;--r-lg:8px;--r-xl:16px;
+}
+html,body{height:100%;background:var(--deep);color:var(--txt)}
+body{font-family:"Noto Sans","Helvetica Neue",Helvetica,Arial,sans-serif;display:flex;flex-direction:column;font-size:14px;line-height:1}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.3);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.5)}
+
+/* ── header ── */
+#hdr{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;
+     background:var(--bg);border-bottom:1px solid var(--bord);flex-shrink:0;
+     box-shadow:0 1px 0 rgba(0,0,0,.2)}
+.logo{width:28px;height:28px;border-radius:50%;background:var(--acc);
+      display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo i{font-size:14px;color:#fff}
+#hdr h1{font-size:15px;font-weight:700;color:var(--txt)}
+.hdr-right{display:flex;align-items:center;gap:4px;margin-left:auto}
+a.policy-link,button.hdr-btn{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--sub);
+  padding:6px 10px;border-radius:var(--r);text-decoration:none;font-weight:500;
+  background:none;border:none;font-family:inherit;cursor:pointer;transition:background .1s,color .1s}
+a.policy-link:hover,button.hdr-btn:hover{color:var(--txt);background:var(--surf)}
+.notif-wrap{position:relative;cursor:pointer;padding:6px;border-radius:var(--r);transition:background .1s}
+.notif-wrap:hover{background:var(--surf)}
+.notif-wrap i{font-size:20px;color:var(--sub)}
+.notif-wrap:hover i{color:var(--txt)}
+#notifBadge{display:none;position:absolute;top:0;right:0;min-width:16px;height:16px;
+  padding:0 4px;background:var(--red);color:#fff;border-radius:8px;
+  font-size:10px;font-weight:700;line-height:16px;text-align:center;
+  border:2px solid var(--deep)}
+.status-pill{display:flex;align-items:center;gap:6px;font-size:13px;
+  color:var(--sub);padding:4px 8px;border-radius:var(--r)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mut);transition:background .3s;flex-shrink:0}
+.dot.online{background:var(--green)}
+
+/* ── layout ── */
+#ws{display:flex;flex:1;overflow:hidden}
+
+/* ── left sidebar ── */
+aside{width:240px;min-width:200px;background:var(--sb);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.aside-head{padding:16px 8px 4px 16px;font-size:11px;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--sub);display:flex;align-items:center;height:40px;cursor:default}
+.add-btn{margin-left:auto;width:20px;height:20px;border-radius:var(--r);background:none;
+  border:none;color:var(--mut);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:16px;transition:color .1s}
+.add-btn:hover{color:var(--txt)}
+.scroll-list{overflow-y:auto;padding:0 8px}
+.srv,.bot-item{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:var(--r);
+  cursor:pointer;font-size:15px;font-weight:500;color:var(--sub);border:none;margin-bottom:1px;
+  transition:background .1s,color .1s;user-select:none}
+.srv:hover,.bot-item:hover{background:var(--surf);color:var(--txt)}
+.srv.active{background:var(--surf);color:var(--txt)}
+.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;transition:border-radius .15s}
+.srv.active .av,.srv:hover .av{border-radius:var(--r-lg)}
+.item-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-size:15px}
+.del-btn{background:none;border:none;color:transparent;cursor:pointer;padding:3px;
+  border-radius:var(--r);display:flex;align-items:center;transition:color .1s}
+.bot-item:hover .del-btn{color:var(--mut)}
+.del-btn:hover{color:var(--red)!important}
+hr.aside-div{border:none;border-top:1px solid var(--bord);margin:4px 8px}
+#addBotForm{padding:8px 8px 12px;margin:0 8px 4px;background:var(--surf);
+  border-radius:var(--r-lg);display:none;flex-direction:column;gap:8px}
+.form-input{width:100%;background:var(--deep);border:none;border-radius:var(--r);
+  padding:10px 12px;font-family:inherit;font-size:14px;color:var(--txt);
+  outline:none;transition:box-shadow .15s}
+.form-input:focus{box-shadow:0 0 0 2px var(--acc)}
+.form-input::placeholder{color:var(--mut)}
+.form-row{display:flex;gap:6px}
+.form-btn{flex:1;padding:8px;background:var(--acc);border:none;border-radius:var(--r);
+  color:#fff;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+  transition:background .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+.form-btn:hover{background:var(--acc2)}
+.form-btn.cancel{background:var(--bord);color:var(--sub)}
+.form-btn.cancel:hover{background:var(--surf);color:var(--txt)}
+.form-btn:disabled{opacity:.45;cursor:not-allowed}
+.form-hint{font-size:11px;color:var(--mut);text-align:center;line-height:1.5}
+
+/* ── right member panel ── */
+#memberPanel{width:240px;min-width:180px;background:var(--sb);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.member-head{padding:16px 16px 6px;font-size:11px;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--sub);height:40px;display:flex;align-items:flex-end}
+.member-group-label{padding:16px 8px 4px;font-size:11px;font-weight:700;letter-spacing:.04em;
+  text-transform:uppercase;color:var(--sub)}
+.member-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r);
+  cursor:pointer;color:var(--sub);margin:0 4px;transition:background .1s,color .1s;position:relative}
+.member-item:hover{background:var(--surf);color:var(--txt)}
+.member-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;position:relative}
+.m-status{position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--sb)}
+.m-status.online{background:var(--green)}.m-status.idle{background:var(--idle)}
+.m-status.dnd{background:var(--dnd)}.m-status.offline{background:var(--mut)}
+.member-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-size:15px}
+.member-actions{display:none;gap:2px;flex-shrink:0}
+.member-item:hover .member-actions{display:flex}
+.mem-act-btn{background:none;border:none;color:var(--mut);cursor:pointer;padding:3px 4px;
+  border-radius:3px;display:flex;align-items:center;transition:color .1s,background .1s;font-size:13px}
+.mem-act-btn:hover{color:var(--txt);background:var(--comp)}
+.member-scroll{overflow-y:auto;flex:1;padding-bottom:8px}
+.member-empty{padding:16px;font-size:13px;color:var(--mut);text-align:center}
+
+/* ── main ── */
+main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;min-width:0;background:var(--bg)}
+#chanBar{display:flex;align-items:center;gap:4px;padding:0 16px;
+  background:var(--bg);border-bottom:1px solid var(--bord);
+  flex-shrink:0;height:48px;overflow-x:auto}
+#chanBar::-webkit-scrollbar{height:0}
+.chan-lbl{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--mut);flex-shrink:0;margin-right:8px}
+.chip{padding:4px 12px;border-radius:var(--r);font-size:14px;font-weight:500;
+  color:var(--mut);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .1s,color .1s}
+.chip:hover{background:var(--surf);color:var(--sub)}
+.chip.active{background:var(--surf);color:var(--txt);font-weight:600}
+#msgLog{flex:1;overflow-y:auto;padding:16px 16px 8px;display:flex;flex-direction:column;gap:0}
+.log-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;color:var(--mut);font-size:16px;text-align:center;line-height:1.6}
+.log-state i{font-size:48px;opacity:.4}
+
+/* ── messages ── */
+.msg-item{padding:2px 16px 2px 72px;position:relative;transition:background .06s;
+  border-left:2px solid transparent;margin-left:-16px;flex-shrink:0}
+.msg-item:hover{background:rgba(0,0,0,.06)}
+.msg-item:hover .msg-acts{opacity:1}
+.msg-item.notif{border-left-color:var(--yel);background:rgba(240,178,50,.04)}
+.msg-item.has-header{padding-top:17px;margin-top:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.msg-item{animation:fadeIn .12s ease}
+.ref-bar{display:flex;align-items:center;gap:5px;margin-bottom:2px;
+  font-size:13px;color:var(--mut);cursor:pointer;overflow:hidden;
+  position:absolute;left:72px;right:16px;top:6px}
+.msg-item.has-header .ref-bar{top:20px}
+.ref-bar:hover{color:var(--sub)}
+.ref-bar i{font-size:13px;flex-shrink:0}
+.ref-author{font-weight:600;color:var(--txt);flex-shrink:0;font-size:13px}
+.ref-content{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut);font-size:13px}
+.notif-bar{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--yel);font-weight:600;margin-bottom:2px}
+.msg-body{display:flex;gap:0;align-items:flex-start;position:relative}
+.msg-av-wrap{position:absolute;left:-56px;top:1px;cursor:pointer;width:40px;height:40px;flex-shrink:0}
+.msg-av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:13px;font-weight:700;color:#fff;transition:opacity .1s}
+.msg-av:hover{opacity:.8}
+.msg-item:not(.has-header) .msg-av-wrap{display:none}
+.msg-ts-compact{position:absolute;left:-56px;top:3px;width:40px;text-align:right;
+  font-size:10px;color:var(--mut);font-family:monospace;display:none;line-height:1.4}
+.msg-item:not(.has-header):hover .msg-ts-compact{display:block}
+.msg-right{flex:1;min-width:0}
+.msg-meta{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
+.msg-author{font-size:15px;font-weight:600;color:var(--txt);cursor:pointer;transition:color .1s}
+.msg-author:hover{color:var(--acc)}
+.msg-time{font-size:12px;color:var(--mut);cursor:default;font-weight:400}
+.msg-text{font-size:15px;color:var(--txt);line-height:1.375;word-break:break-word;white-space:pre-wrap}
+.badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.05em;text-transform:uppercase}
+.b-bot{background:var(--acc);color:#fff;border-radius:3px;font-size:10px}
+.b-reply{background:rgba(240,178,50,.18);color:var(--yel)}
+.b-mention{background:rgba(242,63,67,.15);color:#f87171}
+.msg-acts{position:absolute;top:-16px;right:0;opacity:0;transition:opacity .1s;display:flex;gap:2px;
+  background:var(--comp);border:1px solid var(--bord);border-radius:var(--r-lg);padding:2px;
+  box-shadow:0 4px 8px rgba(0,0,0,.3)}
+.act-btn{display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:var(--r);color:var(--sub);
+  cursor:pointer;font-size:12px;font-family:inherit;font-weight:500;background:none;border:none;
+  transition:background .1s,color .1s}
+.act-btn:hover{background:var(--surf);color:var(--txt)}
+.act-btn.del:hover{background:rgba(242,63,67,.15);color:var(--red)}
+
+/* ── unread divider ── */
+.unread-divider{display:flex;align-items:center;gap:8px;margin:8px 0;color:var(--red);
+  font-size:12px;font-weight:700;letter-spacing:.04em;padding:0 16px}
+.unread-divider::before,.unread-divider::after{content:"";flex:1;height:1px;background:rgba(242,63,67,.4)}
+
+/* ── search bar ── */
+#searchBar{display:none;align-items:center;gap:8px;padding:8px 16px;
+  background:var(--bg);border-bottom:1px solid var(--bord);flex-shrink:0;position:relative}
+#searchBar.open{display:flex}
+#searchInput{flex:1;background:var(--deep);border:none;border-radius:var(--r);
+  padding:8px 12px;font-family:inherit;font-size:14px;color:var(--txt);
+  outline:none;transition:box-shadow .15s}
+#searchInput:focus{box-shadow:0 0 0 2px var(--acc)}
+#searchInput::placeholder{color:var(--mut)}
+#searchClose{background:none;border:none;color:var(--mut);cursor:pointer;padding:6px;
+  border-radius:var(--r);display:flex;align-items:center;transition:color .1s}
+#searchClose:hover{color:var(--txt)}
+#searchResults{position:absolute;top:100%;left:16px;right:16px;background:var(--deep);
+  border:1px solid var(--bord);border-radius:var(--r-lg);max-height:320px;overflow-y:auto;
+  z-index:50;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#searchResults.open{display:block}
+.search-hit{padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(63,65,71,.5);transition:background .1s}
+.search-hit:last-child{border-bottom:none}
+.search-hit:hover{background:var(--surf)}
+.search-hit-meta{font-size:11px;color:var(--mut);margin-bottom:3px}
+.search-hit-meta strong{color:var(--sub)}
+.search-hit-text{font-size:13px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-hit-text mark{background:rgba(88,101,242,.3);color:var(--acc2);border-radius:2px;padding:0 2px}
+.search-empty{padding:20px;text-align:center;font-size:14px;color:var(--mut)}
+
+/* ── reply bar ── */
+#replyBar{display:none;align-items:center;gap:8px;padding:8px 16px;
+  background:var(--bg);font-size:13px;color:var(--sub);flex-shrink:0}
+#replyBar .ri{font-size:16px;color:var(--acc);flex-shrink:0}
+#replyAuthor{font-weight:600;color:var(--acc);flex-shrink:0}
+#replyPreview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--mut)}
+#cancelBtn{background:none;border:none;color:var(--mut);cursor:pointer;padding:4px;
+  border-radius:var(--r);display:flex;align-items:center;transition:color .1s}
+#cancelBtn:hover{color:var(--txt)}
+
+/* ── composer ── */
+#composer{display:none;padding:0 16px 24px;background:var(--bg);flex-shrink:0}
+#botSelector{margin-bottom:8px}
+.bot-sel-label{font-size:11px;color:var(--mut);margin-bottom:6px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+#botOptions{display:flex;gap:4px;flex-wrap:wrap}
+.bot-pill{display:flex;align-items:center;gap:5px;padding:3px 10px 3px 6px;border-radius:20px;
+  border:none;cursor:pointer;font-size:13px;color:var(--sub);font-weight:500;
+  transition:background .1s,color .1s;background:var(--surf)}
+.bot-pill:hover{color:var(--txt)}
+.bot-pill.active{background:var(--acc);color:#fff}
+.mini-av{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0}
+.comp-inner{display:flex;gap:8px;align-items:flex-end;background:var(--comp);
+  border-radius:var(--r-lg);padding:11px 16px;position:relative}
+textarea{flex:1;background:transparent;border:none;outline:none;resize:none;
+  font-family:inherit;font-size:15px;color:var(--txt);
+  min-height:24px;max-height:120px;caret-color:var(--txt);line-height:1.375}
+textarea::placeholder{color:var(--mut)}
+.comp-tools{display:flex;align-items:flex-end;gap:4px;flex-shrink:0}
+.send-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--acc);
+  color:#fff;border:none;border-radius:var(--r);font-family:inherit;
+  font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+.send-btn:hover{background:var(--acc2)}
+.send-btn:active{transform:scale(.97)}
+.send-btn:disabled{background:var(--bord);color:var(--mut);cursor:not-allowed;transform:none}
+.tool-btn{display:flex;align-items:center;padding:6px;border-radius:var(--r);background:none;
+  border:none;color:var(--mut);cursor:pointer;transition:color .1s,background .1s;font-size:18px}
+.tool-btn:hover{color:var(--txt);background:rgba(255,255,255,.05)}
+.comp-hint{font-size:12px;color:var(--mut);margin-top:4px}
+#charCount{font-size:12px;color:var(--mut);margin-top:2px;text-align:right}
+#charCount.warn{color:var(--yel)}
+#charCount.over{color:var(--red)}
+
+/* ── toast ── */
+#toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:var(--r-lg);
+  font-size:14px;font-weight:500;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;transform:translateY(8px);z-index:9999;
+  display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast.ok{background:#1a3a2a;color:#57F287}
+#toast.warn{background:#3a2e10;color:var(--yel)}
+#toast.err{background:#3a1a1a;color:#f87171}
+#toast.info{background:#1e2040;color:var(--acc2)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinning{animation:spin 1s linear infinite;display:inline-block}
+
+/* ── token gate ── */
+#tokenGate{position:fixed;inset:0;background:var(--deep);display:flex;
+  align-items:center;justify-content:center;z-index:9999}
+#tokenGate.hidden{display:none}
+.gate-card{background:var(--sb);border:1px solid var(--bord);border-radius:var(--r-xl);
+  padding:32px 28px;width:100%;max-width:440px;display:flex;flex-direction:column;
+  gap:20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.gate-logo{display:flex;align-items:center;justify-content:center;gap:12px}
+.gate-logo .logo{width:40px;height:40px}
+.gate-logo .logo i{font-size:20px}
+.gate-logo h2{font-size:24px;font-weight:700}
+.gate-desc{font-size:14px;color:var(--sub);text-align:center;line-height:1.6}
+.gate-field{display:flex;flex-direction:column;gap:8px}
+.gate-field label{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sub)}
+.gate-input-wrap{position:relative;display:flex;align-items:center}
+.gate-input{width:100%;background:var(--deep);border:none;border-radius:var(--r);
+  padding:12px 40px 12px 14px;font-family:monospace;font-size:14px;
+  color:var(--txt);outline:none;transition:box-shadow .15s}
+.gate-input:focus{box-shadow:0 0 0 2px var(--acc)}
+.gate-input::placeholder{color:var(--mut);font-family:inherit}
+.eye-btn{position:absolute;right:12px;background:none;border:none;color:var(--mut);
+  cursor:pointer;padding:4px;display:flex;align-items:center;border-radius:var(--r);transition:color .1s}
+.eye-btn:hover{color:var(--txt)}
+.gate-btn{width:100%;padding:13px;background:var(--acc);border:none;border-radius:var(--r);
+  color:#fff;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:9px;transition:background .15s}
+.gate-btn:hover{background:var(--acc2)}
+.gate-btn:disabled{background:var(--bord);color:var(--mut);cursor:not-allowed}
+.gate-error{font-size:13px;color:#f87171;text-align:center;min-height:18px;
+  display:flex;align-items:center;justify-content:center;gap:6px}
+.gate-note{font-size:12px;color:var(--mut);text-align:center;display:flex;
+  align-items:center;justify-content:center;gap:5px}
+
+/* ── auth gate (dashboard login / register) ── */
+#authGate{position:fixed;inset:0;background:var(--deep);display:flex;
+  align-items:center;justify-content:center;z-index:10000}
+#authGate.hidden{display:none}
+.auth-card{background:var(--sb);border:1px solid var(--bord);border-radius:var(--r-xl);
+  padding:32px 28px;width:100%;max-width:420px;display:flex;flex-direction:column;
+  gap:18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.auth-logo{display:flex;align-items:center;justify-content:center;gap:12px}
+.auth-logo .logo{width:40px;height:40px}.auth-logo .logo i{font-size:20px}
+.auth-logo h2{font-size:22px;font-weight:700;color:var(--txt)}
+.auth-view{display:none;flex-direction:column;gap:14px}
+.auth-view.active{display:flex}
+.auth-tabs{display:flex;border-bottom:1px solid var(--bord);margin-bottom:4px}
+.auth-tab{flex:1;padding:10px;font-size:13px;font-weight:600;color:var(--mut);
+  cursor:pointer;border:none;background:none;font-family:inherit;border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:color .1s}
+.auth-tab.active{color:var(--txt);border-bottom-color:var(--acc)}
+.auth-field{display:flex;flex-direction:column;gap:6px}
+.auth-field label{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--sub)}
+.auth-input{width:100%;background:var(--deep);border:none;border-radius:var(--r);
+  padding:11px 14px;font-family:inherit;font-size:14px;color:var(--txt);
+  outline:none;transition:box-shadow .15s}
+.auth-input:focus{box-shadow:0 0 0 2px var(--acc)}
+.auth-input::placeholder{color:var(--mut)}
+.auth-btn{width:100%;padding:12px;background:var(--acc);border:none;border-radius:var(--r);
+  color:#fff;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s}
+.auth-btn:hover{background:var(--acc2)}
+.auth-btn:disabled{background:var(--bord);color:var(--mut);cursor:not-allowed}
+.auth-err{font-size:12px;color:#f87171;text-align:center;min-height:16px;
+  display:flex;align-items:center;justify-content:center;gap:5px}
+.auth-ok{font-size:12px;color:var(--green);text-align:center;min-height:16px;
+  display:flex;align-items:center;justify-content:center;gap:5px}
+.auth-link{font-size:12px;color:var(--acc2);cursor:pointer;text-align:center;background:none;
+  border:none;font-family:inherit;padding:0;transition:color .1s;text-decoration:underline}
+.auth-link:hover{color:var(--txt)}
+.auth-setup-note{font-size:12px;color:var(--yel);text-align:center;line-height:1.5;
+  padding:8px 12px;background:rgba(240,178,50,.08);border-radius:var(--r);border:1px solid rgba(240,178,50,.2)}
+
+/* ── nuke overlay ── */
+#nukeOverlay{position:fixed;inset:0;background:var(--deep);display:none;
+  align-items:center;justify-content:center;z-index:9998}
+#nukeOverlay.show{display:flex}
+.nuke-card{background:var(--sb);border:1px solid rgba(242,63,67,.4);border-radius:var(--r-xl);
+  padding:40px 32px;width:100%;max-width:420px;text-align:center;
+  display:flex;flex-direction:column;gap:16px;
+  box-shadow:0 0 40px rgba(242,63,67,.15),0 20px 60px rgba(0,0,0,.6)}
+.nuke-icon{font-size:52px;line-height:1}
+.nuke-card h2{font-size:22px;font-weight:700;color:var(--red)}
+.nuke-card p{font-size:14px;color:var(--sub);line-height:1.6}
+.nuke-btn{width:100%;padding:13px;background:var(--acc);border:none;border-radius:var(--r);
+  color:#fff;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s}
+.nuke-btn:hover{background:var(--acc2)}
+
+/* ── DM VIEW ── */
+#dmView{position:absolute;inset:0;background:var(--bg);display:none;flex-direction:column;z-index:60}
+#dmView.open{display:flex}
+.dm-topbar{display:flex;align-items:center;gap:10px;padding:0 16px;height:48px;
+  background:var(--bg);border-bottom:1px solid var(--bord);flex-shrink:0}
+.dm-back{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--r);
+  background:none;border:none;cursor:pointer;font-size:14px;font-weight:500;
+  color:var(--sub);transition:background .1s,color .1s;font-family:inherit;flex-shrink:0}
+.dm-back:hover{background:var(--surf);color:var(--txt)}
+.dm-user-info{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.dm-title-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;position:relative}
+.dm-av-dot{position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg)}
+.dm-av-dot.online{background:var(--green)}.dm-av-dot.idle{background:var(--idle)}
+.dm-av-dot.dnd{background:var(--dnd)}.dm-av-dot.offline{background:var(--mut)}
+.dm-username{font-size:15px;font-weight:700;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-status-chip{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;flex-shrink:0}
+.dm-status-chip.online{background:rgba(35,165,89,.15);color:var(--green)}
+.dm-status-chip.idle{background:rgba(240,178,50,.15);color:var(--idle)}
+.dm-status-chip.dnd{background:rgba(242,63,67,.15);color:var(--dnd)}
+.dm-status-chip.offline{background:rgba(128,132,142,.15);color:var(--mut)}
+.dm-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:0}
+.dm-intro{padding:16px 0 20px;border-bottom:1px solid var(--bord);margin-bottom:8px;display:flex;flex-direction:column;gap:10px}
+.dm-intro-av{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:28px;font-weight:700;color:#fff;position:relative}
+.dm-intro-dot{position:absolute;bottom:4px;right:4px;width:18px;height:18px;border-radius:50%;border:3px solid var(--bg)}
+.dm-intro-dot.online{background:var(--green)}.dm-intro-dot.idle{background:var(--idle)}
+.dm-intro-dot.dnd{background:var(--dnd)}.dm-intro-dot.offline{background:var(--mut)}
+.dm-intro-name{font-size:22px;font-weight:700}
+.dm-intro-sub{font-size:14px;color:var(--sub)}
+.dm-loading{display:flex;align-items:center;gap:8px;color:var(--mut);font-size:14px;padding:12px 0}
+.dm-composer{padding:0 16px 24px;background:var(--bg);flex-shrink:0}
+.dm-comp-inner{display:flex;gap:8px;align-items:flex-end;background:var(--comp);
+  border-radius:var(--r-lg);padding:11px 16px}
+#dmInbox{display:none}
+#dmInbox.has-dms{display:block}
+.dm-inbox-item{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:var(--r);
+  cursor:pointer;color:var(--sub);border:none;margin-bottom:1px;transition:background .1s,color .1s;user-select:none}
+.dm-inbox-item:hover{background:var(--surf);color:var(--txt)}
+.dm-inbox-item .item-name{font-size:14px;font-weight:500;flex:0 0 auto;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-inbox-preview{font-size:12px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.dm-inbox-col{display:flex;flex-direction:column;flex:1;min-width:0;gap:1px}
+
+/* ── moderation modal ── */
+#modModal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;
+  align-items:center;justify-content:center;z-index:200}
+#modModal.open{display:flex}
+.mod-card{background:var(--sb);border:1px solid var(--bord);border-radius:var(--r-xl);
+  padding:0;width:460px;max-width:95vw;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden}
+.mod-header{padding:20px 24px 16px;border-bottom:1px solid var(--bord);display:flex;align-items:center;gap:12px}
+.mod-user-av{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+.mod-user-info h3{font-size:16px;font-weight:700;color:var(--txt)}
+.mod-user-info p{font-size:12px;color:var(--mut);margin-top:2px}
+.mod-close{margin-left:auto;background:none;border:none;color:var(--mut);cursor:pointer;padding:6px;
+  border-radius:var(--r);display:flex;align-items:center;transition:color .1s}
+.mod-close:hover{color:var(--txt)}
+.mod-tabs{display:flex;border-bottom:1px solid var(--bord);padding:0 24px}
+.mod-tab{padding:12px 16px;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .1s}
+.mod-tab:hover{color:var(--sub)}
+.mod-tab.active{color:var(--txt);border-bottom-color:var(--acc)}
+.mod-body{padding:20px 24px;display:flex;flex-direction:column;gap:14px;max-height:60vh;overflow-y:auto}
+.mod-section{display:none}
+.mod-section.active{display:flex;flex-direction:column;gap:14px}
+.mod-field{display:flex;flex-direction:column;gap:6px}
+.mod-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--sub)}
+.mod-input{background:var(--deep);border:none;border-radius:var(--r);padding:10px 12px;
+  font-family:inherit;font-size:14px;color:var(--txt);outline:none;width:100%;transition:box-shadow .15s}
+.mod-input:focus{box-shadow:0 0 0 2px var(--acc)}
+.mod-input::placeholder{color:var(--mut)}
+.mod-select{background:var(--deep);border:none;border-radius:var(--r);padding:10px 12px;
+  font-family:inherit;font-size:14px;color:var(--txt);outline:none;width:100%;cursor:pointer}
+.mod-actions{display:flex;flex-wrap:wrap;gap:8px;padding:0 24px 20px}
+.mod-btn{flex:1;min-width:120px;padding:10px 16px;border:none;border-radius:var(--r);
+  font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;gap:6px;transition:background .15s}
+.mod-btn.primary{background:var(--acc);color:#fff}
+.mod-btn.primary:hover{background:var(--acc2)}
+.mod-btn.danger{background:var(--red);color:#fff}
+.mod-btn.danger:hover{background:#c73237}
+.mod-btn.warn{background:var(--yel);color:#111}
+.mod-btn.warn:hover{background:#d9a020}
+.mod-btn.ghost{background:var(--surf);color:var(--sub)}
+.mod-btn.ghost:hover{color:var(--txt)}
+.mod-btn:disabled{opacity:.45;cursor:not-allowed}
+.role-list{display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto}
+.role-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--r);
+  background:var(--comp);font-size:13px}
+.role-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.role-name{flex:1;font-weight:500;color:var(--txt)}
+.role-count{font-size:11px;color:var(--mut);flex-shrink:0}
+.role-toggle{background:none;border:none;cursor:pointer;font-size:13px;color:var(--mut);
+  padding:3px 6px;border-radius:var(--r);transition:color .1s,background .1s}
+.role-toggle:hover{background:var(--surf);color:var(--txt)}
+.role-toggle.has-role{color:var(--red)}
+.role-toggle.has-role:hover{background:rgba(242,63,67,.1)}
+.perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.perm-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--sub)}
+.perm-item i.has{color:var(--green)}
+.perm-item i.no{color:var(--red)}
+
+/* ── server management panel ── */
+#srvPanel{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;
+  align-items:center;justify-content:center;z-index:180}
+#srvPanel.open{display:flex}
+.srv-card{background:var(--sb);border:1px solid var(--bord);border-radius:var(--r-xl);
+  width:520px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden}
+.srv-card-head{padding:20px 24px 16px;border-bottom:1px solid var(--bord);
+  display:flex;align-items:center;gap:12px}
+.srv-card-head h2{font-size:18px;font-weight:700;color:var(--txt);flex:1}
+.srv-card-body{padding:20px 24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:20px}
+.srv-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--sub);margin-bottom:8px}
+.srv-perm-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;
+  font-size:12px;font-weight:600;margin:3px}
+.srv-perm-chip.yes{background:rgba(35,165,89,.15);color:var(--green)}
+.srv-perm-chip.no{background:rgba(128,132,142,.12);color:var(--mut)}
+.bulk-del-row{display:flex;align-items:center;gap:8px}
+.srv-danger-zone{border:1px solid rgba(242,63,67,.3);border-radius:var(--r-lg);padding:16px}
+.srv-danger-title{font-size:12px;font-weight:700;color:var(--red);text-transform:uppercase;
+  letter-spacing:.04em;margin-bottom:12px}
+.channel-create-row{display:flex;gap:8px}
+</style>
+</head>
+<body>
+
+<!-- Auth Gate (Dashboard Login / Register) -->
+<div id="authGate">
+  <div class="auth-card">
+    <div class="auth-logo"><div class="logo"><i class="ti ti-bolt"></i></div><h2>Bot Dashboard</h2></div>
+
+    <!-- login / register tabs -->
+    <div id="authTabRow" class="auth-tabs">
+      <button class="auth-tab active" onclick="showAuthView('login',this)">Sign In</button>
+      <button class="auth-tab" onclick="showAuthView('register',this)">Register</button>
+    </div>
+
+    <!-- setup mode notice -->
+    <div id="authSetupNote" class="auth-setup-note" style="display:none">
+      <i class="ti ti-info-circle"></i> No accounts exist yet — register to create the first account.
+    </div>
+
+    <!-- Login -->
+    <div class="auth-view active" id="authView-login">
+      <div class="auth-field"><label>Email</label><input class="auth-input" id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input class="auth-input" id="loginPassword" type="password" placeholder="Your password" autocomplete="current-password"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);cursor:pointer">
+        <input type="checkbox" id="loginRemember" style="accent-color:var(--acc)"> Remember me for 30 days
+      </label>
+      <div class="auth-err" id="loginErr"></div>
+      <button class="auth-btn" id="loginBtn" onclick="doAuthLogin()"><i class="ti ti-login"></i> Sign In</button>
+      <button class="auth-link" onclick="showAuthView('forgot')">Forgot your password?</button>
+    </div>
+
+    <!-- Register -->
+    <div class="auth-view" id="authView-register">
+      <div class="auth-field"><label>Username</label><input class="auth-input" id="regUsername" type="text" placeholder="Display name" autocomplete="username"></div>
+      <div class="auth-field"><label>Email</label><input class="auth-input" id="regEmail" type="email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input class="auth-input" id="regPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password"></div>
+      <div class="auth-err" id="regErr"></div>
+      <button class="auth-btn" id="regBtn" onclick="doAuthRegister()"><i class="ti ti-user-plus"></i> Create Account</button>
+    </div>
+
+    <!-- Forgot password -->
+    <div class="auth-view" id="authView-forgot">
+      <p style="font-size:13px;color:var(--sub);text-align:center;line-height:1.6">Enter your email and we'll look up your account.</p>
+      <div class="auth-field"><label>Email</label><input class="auth-input" id="forgotEmail" type="email" placeholder="you@example.com" autocomplete="email"></div>
+      <div class="auth-err" id="forgotErr"></div>
+      <button class="auth-btn" id="forgotBtn" onclick="doForgotPassword()"><i class="ti ti-search"></i> Find Account</button>
+      <button class="auth-link" onclick="showAuthView('login')"><i class="ti ti-arrow-left" style="font-size:11px"></i> Back to Sign In</button>
+    </div>
+
+    <!-- Reset password (shown after an account is found by email) -->
+    <div class="auth-view" id="authView-reset">
+      <div class="auth-ok" id="resetFoundMsg" style="display:none"><i class="ti ti-user-check"></i> <span id="resetFoundText"></span></div>
+      <p style="font-size:13px;color:var(--sub);text-align:center;line-height:1.6">Enter a new password for your account.</p>
+      <div class="auth-field"><label>New Password</label><input class="auth-input" id="resetPassword" type="password" placeholder="At least 8 characters" autocomplete="new-password"></div>
+      <div class="auth-err" id="resetErr"></div>
+      <div class="auth-ok" id="resetOk" style="display:none"><i class="ti ti-check"></i> Password changed! Redirecting…</div>
+      <button class="auth-btn" id="resetBtn" onclick="doResetPassword()"><i class="ti ti-lock"></i> Reset Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- Token Gate -->
+<div id="tokenGate">
+  <div class="gate-card">
+    <div class="gate-logo"><div class="logo"><i class="ti ti-bolt"></i></div><h2>Bot Dashboard</h2></div>
+    <p class="gate-desc">Enter your Discord bot token to connect.<br>Your token is stored in your browser only.</p>
+    <div class="gate-field">
+      <label for="gateToken">Bot Token</label>
+      <div class="gate-input-wrap">
+        <input class="gate-input" id="gateToken" type="password" placeholder="Paste your bot token here…" autocomplete="off" spellcheck="false">
+        <button class="eye-btn" onclick="toggleEye()"><i class="ti ti-eye" id="eyeIcon"></i></button>
+      </div>
+    </div>
+    <div class="gate-error" id="gateError"></div>
+    <button class="gate-btn" id="gateBtn" onclick="submitToken()"><i class="ti ti-plug-connected"></i> Connect Bot</button>
+    <div class="gate-note"><i class="ti ti-lock" style="font-size:12px"></i> Token saved in your browser for 5 hours</div>
+  </div>
+</div>
+
+<!-- Nuke Overlay -->
+<div id="nukeOverlay">
+  <div class="nuke-card">
+    <div class="nuke-icon">💥</div>
+    <h2>Session Nuked</h2>
+    <p>All bot sessions have been cleared by the server administrator.<br>Please re-enter your token to reconnect.</p>
+    <button class="nuke-btn" onclick="reloginAfterNuke()"><i class="ti ti-refresh"></i> Re-Login</button>
+  </div>
+</div>
+
+<!-- Moderation Modal -->
+<div id="modModal">
+  <div class="mod-card">
+    <div class="mod-header">
+      <div class="mod-user-av" id="modAv"></div>
+      <div class="mod-user-info">
+        <h3 id="modName">—</h3>
+        <p id="modMeta">—</p>
+      </div>
+      <button class="mod-close" onclick="closeModModal()"><i class="ti ti-x" style="font-size:18px"></i></button>
+    </div>
+    <div class="mod-tabs">
+      <div class="mod-tab active" data-tab="actions">Actions</div>
+      <div class="mod-tab" data-tab="roles">Roles</div>
+      <div class="mod-tab" data-tab="perms">Bot Perms</div>
+    </div>
+    <div class="mod-body">
+      <!-- Actions tab -->
+      <div class="mod-section active" id="modTab-actions">
+        <div class="mod-field">
+          <label class="mod-label">Nickname</label>
+          <div style="display:flex;gap:8px">
+            <input class="mod-input" id="modNick" placeholder="Leave blank to reset…">
+            <button class="mod-btn primary" style="flex:0 0 auto;min-width:80px" onclick="doSetNick()"><i class="ti ti-pencil"></i> Set</button>
+          </div>
+        </div>
+        <div class="mod-field">
+          <label class="mod-label">Timeout</label>
+          <select class="mod-select" id="modTimeoutDur">
+            <option value="0">Remove timeout</option>
+            <option value="60000">1 minute</option>
+            <option value="300000" selected>5 minutes</option>
+            <option value="600000">10 minutes</option>
+            <option value="3600000">1 hour</option>
+            <option value="86400000">1 day</option>
+            <option value="604800000">1 week</option>
+          </select>
+        </div>
+        <div class="mod-field">
+          <label class="mod-label">Reason</label>
+          <input class="mod-input" id="modReason" placeholder="Reason (optional)…">
+        </div>
+      </div>
+      <!-- Roles tab -->
+      <div class="mod-section" id="modTab-roles">
+        <div id="modRoleList"><div style="color:var(--mut);font-size:13px;text-align:center;padding:12px 0">Loading roles…</div></div>
+      </div>
+      <!-- Perms tab -->
+      <div class="mod-section" id="modTab-perms">
+        <div id="modPermGrid" class="perm-grid"></div>
+      </div>
+    </div>
+    <div class="mod-actions">
+      <button class="mod-btn ghost" onclick="closeModModal()">Cancel</button>
+      <button class="mod-btn warn" onclick="doTimeout()" id="modTimeoutBtn"><i class="ti ti-clock-pause"></i> Timeout</button>
+      <button class="mod-btn danger" onclick="doKick()" id="modKickBtn" style="display:none"><i class="ti ti-user-minus"></i> Kick</button>
+      <button class="mod-btn danger" onclick="doBan()" id="modBanBtn" style="display:none"><i class="ti ti-hammer"></i> Ban</button>
+    </div>
+  </div>
+</div>
+
+<!-- Server Management Panel -->
+<div id="srvPanel">
+  <div class="srv-card">
+    <div class="srv-card-head">
+      <div class="av" id="srvPanelAv" style="width:36px;height:36px;border-radius:var(--r-lg)"></div>
+      <h2 id="srvPanelName">Server Management</h2>
+      <button class="mod-close" onclick="closeSrvPanel()"><i class="ti ti-x" style="font-size:18px"></i></button>
+    </div>
+    <div class="srv-card-body" id="srvPanelBody">
+      <div style="color:var(--mut);font-size:13px;text-align:center;padding:24px 0"><i class="ti ti-loader spinning" style="font-size:20px"></i></div>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<div id="hdr">
+  <div class="logo"><i class="ti ti-bolt"></i></div>
+  <h1>Bot Dashboard</h1>
+  <div class="hdr-right">
+    <a class="policy-link" href="/updates" target="_blank"><i class="ti ti-history"></i> Changelog</a>
+    <button class="hdr-btn" id="srvMgmtBtn" onclick="openSrvPanel()" style="display:none" title="Server Management"><i class="ti ti-settings"></i></button>
+    <button class="hdr-btn" id="logoutBtn" onclick="doLogout()" style="display:none"><i class="ti ti-logout"></i> Logout</button>
+    <div class="notif-wrap" onclick="jumpToNotif()" title="Jump to notification"><i class="ti ti-bell"></i><span id="notifBadge"></span></div>
+    <div class="status-pill"><div class="dot" id="statusDot"></div><span id="statusText">connecting...</span></div>
+  </div>
+</div>
+
+<!-- Workspace -->
+<div id="ws">
+  <aside>
+    <div class="aside-head">Servers</div>
+    <div class="scroll-list" id="srvList" style="flex:1;padding-bottom:4px"></div>
+    <hr class="aside-div">
+    <div class="aside-head">Custom Bots
+      <button class="add-btn" id="addBotToggle" onclick="toggleAddBot()"><i class="ti ti-plus"></i></button>
+    </div>
+    <div id="addBotForm">
+      <input class="form-input" id="newBotToken" type="password" placeholder="Bot token" autocomplete="off">
+      <input class="form-input" id="newBotName" type="text" placeholder="Display name (optional)">
+      <div class="form-row">
+        <button class="form-btn" id="connectBotBtn" onclick="addBot()"><i class="ti ti-plug-connected"></i> Connect</button>
+        <button class="form-btn cancel" onclick="toggleAddBot()">Cancel</button>
+      </div>
+      <div class="form-hint"><i class="ti ti-lock" style="font-size:11px"></i> Token kept in memory only</div>
+    </div>
+    <div class="scroll-list" id="botList" style="padding-bottom:14px"></div>
+  </aside>
+
+  <main>
+    <div id="chanBar"><span style="font-size:12px;color:var(--mut);font-style:italic">Select a server to begin</span></div>
+    <div id="searchBar">
+      <i class="ti ti-search" style="color:var(--mut);font-size:16px;flex-shrink:0"></i>
+      <input id="searchInput" placeholder="Search messages…" autocomplete="off">
+      <button id="searchClose" onclick="closeSearch()"><i class="ti ti-x"></i></button>
+      <div id="searchResults"></div>
+    </div>
+    <div id="msgLog"><div class="log-state"><i class="ti ti-messages"></i><div>Select a server and channel<br>to see live messages</div></div></div>
+    <div id="replyBar">
+      <i class="ti ti-corner-up-right ri"></i>
+      <span>Replying to</span>&nbsp;<span id="replyAuthor"></span>&nbsp;<span id="replyPreview"></span>
+      <button id="cancelBtn" onclick="cancelReply()"><i class="ti ti-x" style="font-size:15px"></i></button>
+    </div>
+    <div id="composer">
+      <div id="botSelector" style="display:none">
+        <div class="bot-sel-label">Send as:</div>
+        <div id="botOptions"></div>
+      </div>
+      <div class="comp-inner">
+        <textarea id="msgInput" placeholder="Select a channel…" rows="1"></textarea>
+        <div class="comp-tools">
+          <button class="tool-btn" onclick="toggleSearch()" title="Search (Ctrl+F)"><i class="ti ti-search"></i></button>
+          <button class="send-btn" id="sendBtn" onclick="doSend()" disabled><i class="ti ti-send"></i> Send</button>
+        </div>
+      </div>
+      <div id="charCount"></div>
+      <div class="comp-hint">Enter to send · Shift+Enter for new line · Click a name to DM or moderate</div>
+    </div>
+
+    <!-- DM View -->
+    <div id="dmView">
+      <div class="dm-topbar">
+        <button class="dm-back" onclick="closeDM()"><i class="ti ti-arrow-left"></i> Back</button>
+        <div class="dm-user-info">
+          <div class="dm-title-av" id="dmTitleAv"><div class="dm-av-dot" id="dmTitleDot"></div></div>
+          <span class="dm-username" id="dmTitleName">—</span>
+          <span class="dm-status-chip" id="dmStatusChip">offline</span>
+        </div>
+      </div>
+      <div class="dm-msgs" id="dmMsgs">
+        <div class="dm-intro">
+          <div class="dm-intro-av" id="dmIntroAv"><div class="dm-intro-dot" id="dmIntroDot"></div></div>
+          <div class="dm-intro-name" id="dmIntroName">—</div>
+          <div class="dm-intro-sub">This is the beginning of your DM history with <strong id="dmIntroNameB">—</strong>.</div>
+        </div>
+        <div class="dm-loading" id="dmLoading" style="display:none"><i class="ti ti-loader spinning"></i> Loading messages…</div>
+      </div>
+      <div class="dm-composer">
+        <div class="dm-comp-inner">
+          <textarea id="dmInput" placeholder="Message…" rows="1"
+            style="flex:1;background:transparent;border:none;outline:none;resize:none;font-family:inherit;font-size:14px;color:var(--txt);min-height:36px;max-height:120px;caret-color:var(--acc2);line-height:1.5"></textarea>
+          <button class="send-btn" id="dmSendBtn" onclick="sendDM()"><i class="ti ti-send"></i> Send</button>
+        </div>
+        <div class="comp-hint" style="margin-top:6px">Enter to send · Shift+Enter for new line</div>
+      </div>
+    </div>
+  </main>
+
+  <div id="memberPanel">
+    <div class="member-head">Members</div>
+    <div class="member-scroll" id="memberList">
+      <div class="member-empty">Select a server</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ── helpers ── */
+var AV=['#c0392b','#2ecc71','#e91e8c','#e74c3c','#f39c12','#3498db','#9b59b6','#e67e22'];
+function ac(n){var h=0;for(var i=0;i<n.length;i++)h=((h<<5)-h+n.charCodeAt(i))|0;return AV[Math.abs(h)%AV.length];}
+function ini(n){return(n||"?").split(/\s+/).map(function(w){return w[0]||""}).join("").slice(0,2).toUpperCase()||"?";}
+function esc(t){return(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function fmt(iso){return new Date(iso).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});}
+var _tt=null;
+function showToast(msg,type,icon){
+  var t=document.getElementById("toast");
+  t.className="show "+(type||"ok");
+  t.innerHTML='<i class="ti '+(icon||"ti-check")+'" style="font-size:16px"></i> '+esc(msg);
+  if(_tt)clearTimeout(_tt);_tt=setTimeout(function(){t.className=""},3500);
+}
+function statusDotClass(s){
+  if(s==="online")return"online";if(s==="idle")return"idle";if(s==="dnd")return"dnd";return"offline";
+}
+
+/* ── token persistence (bot token) ── */
+var TOKEN_TTL=5*60*60*1000;
+function saveToken(t){localStorage.setItem("bot_token",t);localStorage.setItem("bot_token_exp",String(Date.now()+TOKEN_TTL));}
+function loadToken(){var t=localStorage.getItem("bot_token"),e=parseInt(localStorage.getItem("bot_token_exp")||"0");if(t&&Date.now()<e)return t;clearToken();return"";}
+function clearToken(){localStorage.removeItem("bot_token");localStorage.removeItem("bot_token_exp");}
+var SESSION_TOKEN=loadToken();
+function applyTokenHeader(opts){
+  opts=opts||{};if(!opts.headers)opts.headers={};
+  if(SESSION_TOKEN)opts.headers["X-Bot-Token"]=SESSION_TOKEN;
+  return opts;
+}
+var _origFetch=window.fetch;
+window.fetch=function(url,opts){
+  if(typeof url==="string"&&!url.startsWith("http")){
+    opts=applyTokenHeader(opts||{});
+  }
+  return _origFetch.apply(this,[url,opts]).then(function(res){
+    // If backend returns 401 on any non-auth route, bounce to login
+    if(res.status===401&&typeof url==="string"&&!url.startsWith("/auth")){
+      showAuthGate();
+    }
+    return res;
+  });
+};
+
+/* ── dashboard auth ── */
+var _dashUser=null;
+var _resetEmail="";
+
+function showAuthGate(view){
+  document.getElementById("authGate").classList.remove("hidden");
+  if(view)showAuthView(view);
+}
+function hideAuthGate(){
+  document.getElementById("authGate").classList.add("hidden");
+}
+
+function showAuthView(view,tabEl){
+  document.querySelectorAll(".auth-view").forEach(function(v){v.classList.remove("active");});
+  var el=document.getElementById("authView-"+view);
+  if(el)el.classList.add("active");
+  // update tabs if applicable
+  if(tabEl){
+    document.querySelectorAll(".auth-tab").forEach(function(t){t.classList.remove("active");});
+    tabEl.classList.add("active");
+  } else if(view==="login"||view==="register"){
+    document.querySelectorAll(".auth-tab").forEach(function(t){
+      t.classList.toggle("active",t.textContent.trim().toLowerCase().replace(" ","")===view);
+    });
+  }
+  // hide tab row on forgot/reset views
+  var tabRow=document.getElementById("authTabRow");
+  if(tabRow)tabRow.style.display=(view==="forgot"||view==="reset")?"none":"";
+}
+
+function setAuthErr(id,msg){
+  var el=document.getElementById(id);
+  if(el)el.innerHTML=msg?'<i class="ti ti-alert-circle"></i> '+msg:"";
+}
+
+function doAuthLogin(){
+  var email=document.getElementById("loginEmail").value.trim();
+  var pass=document.getElementById("loginPassword").value;
+  var remember=document.getElementById("loginRemember").checked;
+  if(!email||!pass){setAuthErr("loginErr","Email and password required.");return;}
+  var btn=document.getElementById("loginBtn");
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader spinning"></i> Signing in…';
+  setAuthErr("loginErr","");
+  _origFetch("/auth/login",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({email:email,password:pass,rememberMe:remember})
+  }).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+  .then(function(res){
+    if(res.ok&&res.d.success){
+      _dashUser=res.d.user;
+      hideAuthGate();
+      onAuthSuccess();
+    } else {
+      setAuthErr("loginErr",res.d.error||"Login failed.");
+      btn.disabled=false;btn.innerHTML='<i class="ti ti-login"></i> Sign In';
+    }
+  }).catch(function(){
+    setAuthErr("loginErr","Could not reach server.");
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-login"></i> Sign In';
+  });
+}
+
+function doAuthRegister(){
+  var username=document.getElementById("regUsername").value.trim();
+  var email=document.getElementById("regEmail").value.trim();
+  var pass=document.getElementById("regPassword").value;
+  if(!username||!email||!pass){setAuthErr("regErr","All fields are required.");return;}
+  if(pass.length<8){setAuthErr("regErr","Password must be at least 8 characters.");return;}
+  var btn=document.getElementById("regBtn");
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader spinning"></i> Creating…';
+  setAuthErr("regErr","");
+  _origFetch("/auth/register",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({username:username,email:email,password:pass})
+  }).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+  .then(function(res){
+    if(res.ok&&res.d.success){
+      // auto-login after register
+      document.getElementById("loginEmail").value=email;
+      document.getElementById("loginPassword").value=pass;
+      showAuthView("login");
+      setTimeout(doAuthLogin,80);
+    } else {
+      setAuthErr("regErr",res.d.error||"Registration failed.");
+      btn.disabled=false;btn.innerHTML='<i class="ti ti-user-plus"></i> Create Account';
+    }
+  }).catch(function(){
+    setAuthErr("regErr","Could not reach server.");
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-user-plus"></i> Create Account';
+  });
+}
+
+function doForgotPassword(){
+  var email=document.getElementById("forgotEmail").value.trim();
+  if(!email){setAuthErr("forgotErr","Enter your email address.");return;}
+  var btn=document.getElementById("forgotBtn");
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader spinning"></i> Looking up…';
+  setAuthErr("forgotErr","");
+  _origFetch("/auth/forgot-password",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({email:email})
+  }).then(function(r){return r.json();})
+  .then(function(d){
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-search"></i> Find Account';
+    if(d.found){
+      _resetEmail=email;
+      document.getElementById("resetFoundText").textContent="Account found for "+d.username+" ("+email+")";
+      document.getElementById("resetFoundMsg").style.display="flex";
+      document.getElementById("resetPassword").value="";
+      setAuthErr("resetErr","");
+      showAuthView("reset");
+    } else {
+      setAuthErr("forgotErr","No account found with that email.");
+    }
+  }).catch(function(){
+    setAuthErr("forgotErr","Could not reach server.");
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-search"></i> Find Account';
+  });
+}
+
+function doResetPassword(){
+  var pass=document.getElementById("resetPassword").value;
+  if(!pass||pass.length<8){setAuthErr("resetErr","Password must be at least 8 characters.");return;}
+  var btn=document.getElementById("resetBtn");
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader spinning"></i> Resetting…';
+  setAuthErr("resetErr","");
+  _origFetch("/auth/reset-password",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({email:_resetEmail,password:pass})
+  }).then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+  .then(function(res){
+    if(res.ok&&res.d.success){
+      document.getElementById("resetOk").style.display="flex";
+      clearToken();SESSION_TOKEN="";
+      setTimeout(function(){
+        _resetEmail="";
+        document.getElementById("resetFoundMsg").style.display="none";
+        document.getElementById("resetOk").style.display="none";
+        showAuthView("login");
+      },2000);
+    } else {
+      setAuthErr("resetErr",res.d.error||"Reset failed.");
+      btn.disabled=false;btn.innerHTML='<i class="ti ti-lock"></i> Reset Password';
+    }
+  }).catch(function(){
+    setAuthErr("resetErr","Could not reach server.");
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-lock"></i> Reset Password';
+  });
+}
+
+function onAuthSuccess(){
+  // Update logout button label to show username
+  var lb=document.getElementById("logoutBtn");
+  if(lb&&_dashUser)lb.title="Signed in as "+_dashUser.username;
+  // Show token gate if no bot token saved, otherwise continue as before
+  if(SESSION_TOKEN){
+    submitToken();
+  } else {
+    document.getElementById("tokenGate").classList.remove("hidden");
+  }
+}
+
+/* ── gate ── */
+function toggleEye(){
+  var i=document.getElementById("gateToken"),ic=document.getElementById("eyeIcon");
+  i.type=i.type==="password"?"text":"password";
+  ic.className=i.type==="password"?"ti ti-eye":"ti ti-eye-off";
+}
+function setGateError(msg){
+  var e=document.getElementById("gateError");
+  e.innerHTML=msg?'<i class="ti ti-alert-circle"></i> '+msg:"";
+}
+function submitToken(){
+  var token=document.getElementById("gateToken").value.trim()||SESSION_TOKEN;
+  if(!token){setGateError("Please paste a bot token.");return;}
+  var btn=document.getElementById("gateBtn");
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader spinning"></i> Verifying…';setGateError("");
+  SESSION_TOKEN=token;
+  fetch("/status").then(function(r){return r.json();}).then(function(d){
+    if(d.nuked){SESSION_TOKEN="";showNukeOverlay();btn.disabled=false;btn.innerHTML='<i class="ti ti-plug-connected"></i> Connect Bot';return;}
+    if(d.online){
+      saveToken(token);
+      document.getElementById("tokenGate").classList.add("hidden");
+      document.getElementById("logoutBtn").style.display="flex";
+      startPolling();loadBots();
+    } else {
+      SESSION_TOKEN="";setGateError("Bot is offline or token is invalid.");
+      btn.disabled=false;btn.innerHTML='<i class="ti ti-plug-connected"></i> Connect Bot';
+    }
+  }).catch(function(){
+    SESSION_TOKEN="";setGateError("Could not reach the server.");
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-plug-connected"></i> Connect Bot';
+  });
+}
+document.addEventListener("DOMContentLoaded",function(){
+  document.getElementById("gateToken").addEventListener("keydown",function(e){if(e.key==="Enter")submitToken();});
+  // Auth input enter-key shortcuts
+  ["loginEmail","loginPassword"].forEach(function(id){
+    document.getElementById(id).addEventListener("keydown",function(e){if(e.key==="Enter")doAuthLogin();});
+  });
+  ["regUsername","regEmail","regPassword"].forEach(function(id){
+    document.getElementById(id).addEventListener("keydown",function(e){if(e.key==="Enter")doAuthRegister();});
+  });
+  document.getElementById("forgotEmail").addEventListener("keydown",function(e){if(e.key==="Enter")doForgotPassword();});
+  document.getElementById("resetPassword").addEventListener("keydown",function(e){if(e.key==="Enter")doResetPassword();});
+
+  // Check if already authenticated via cookie
+  _origFetch("/auth/me").then(function(r){return r.json();}).then(function(d){
+    if(d.setupMode){
+      // No accounts — show register view with setup notice
+      document.getElementById("authSetupNote").style.display="block";
+      showAuthView("register");
+    } else if(d.loggedIn){
+      _dashUser=d;
+      hideAuthGate();
+      onAuthSuccess();
+    } else {
+      showAuthView("login");
+    }
+  }).catch(function(){showAuthView("login");});
+});
+
+/* ── nuke / logout ── */
+function showNukeOverlay(){
+  SESSION_TOKEN="";clearToken();
+  if(evtSrc){evtSrc.close();evtSrc=null;}
+  if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
+  document.getElementById("nukeOverlay").classList.add("show");
+}
+function doLogout(){
+  _origFetch("/auth/logout",{method:"POST"}).catch(function(){});
+  _dashUser=null;clearToken();SESSION_TOKEN="";stopPolling();
+  if(evtSrc){evtSrc.close();evtSrc=null;}
+  if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
+  curServer=null;curChan=null;curChanId=null;replyMsg=null;notifCount=0;lastNotifId=null;
+  msgStore.clear();customBots={};activeBotId="main";dmTarget=null;memberMap={};dmChannelId=null;_srvHash="";
+  botPerms={};guildRoles=[];
+  document.getElementById("srvList").innerHTML="";
+  document.getElementById("botList").innerHTML="";
+  document.getElementById("memberList").innerHTML='<div class="member-empty">Select a server</div>';
+  document.getElementById("msgLog").innerHTML='<div class="log-state"><i class="ti ti-messages"></i><div>Select a server and channel<br>to see live messages</div></div>';
+  document.getElementById("chanBar").innerHTML='<span style="font-size:12px;color:var(--mut);font-style:italic">Select a server to begin</span>';
+  document.getElementById("composer").style.display="none";
+  document.getElementById("statusDot").className="dot";
+  document.getElementById("statusText").textContent="connecting...";
+  document.getElementById("logoutBtn").style.display="none";
+  document.getElementById("srvMgmtBtn").style.display="none";
+  document.getElementById("notifBadge").style.display="none";
+  closeDM();
+  document.getElementById("tokenGate").classList.remove("hidden");
+  document.getElementById("gateToken").value="";
+  document.getElementById("gateError").innerHTML="";
+  // Show the dashboard auth gate (login screen) on top
+  document.getElementById("loginPassword").value="";
+  setAuthErr("loginErr","");
+  showAuthView("login");
+  showAuthGate();
+}
+function reloginAfterNuke(){
+  document.getElementById("nukeOverlay").classList.remove("show");
+  doLogout();
+}
+
+/* ── state ── */
+var curServer=null,curChan=null,curChanId=null,replyMsg=null,notifCount=0,lastNotifId=null,evtSrc=null;
+var msgStore=new Map(),customBots={},activeBotId="main";
+var dmTarget=null,dmEvtSrc=null,dmChannelId=null;
+var memberMap={};
+var botPerms={};    // bot permissions for current guild
+var guildRoles=[];  // roles for current guild
+var modTarget=null; // member being moderated
+
+/* ── status poll ── */
+var _lastOnline=false,_pollIv=null,_srvIv=null;
+function pollStatus(){
+  if(!SESSION_TOKEN)return;
+  fetch("/status").then(function(r){return r.json();}).then(function(d){
+    if(d.nuked){showNukeOverlay();return;}
+    var dot=document.getElementById("statusDot"),txt=document.getElementById("statusText");
+    var nowOnline=!!d.online;
+    dot.className="dot"+(nowOnline?" online":"");
+    txt.textContent=nowOnline?d.username:"offline";
+    if(nowOnline&&!_lastOnline){refreshBotPills();}
+    _lastOnline=nowOnline;
+  }).catch(function(){
+    document.getElementById("statusDot").className="dot";
+    document.getElementById("statusText").textContent="offline";
+    _lastOnline=false;
+  });
+}
+function startPolling(){
+  if(_pollIv)clearInterval(_pollIv);if(_srvIv)clearInterval(_srvIv);
+  pollStatus();_pollIv=setInterval(pollStatus,8000);
+  loadServers();_srvIv=setInterval(loadServers,30000);
+}
+function stopPolling(){
+  if(_pollIv){clearInterval(_pollIv);_pollIv=null;}
+  if(_srvIv){clearInterval(_srvIv);_srvIv=null;}
+}
+if(SESSION_TOKEN)startPolling();
+
+/* ── servers ── */
+var _srvHash="";
+function loadServers(){
+  if(!SESSION_TOKEN)return;
+  fetch("/guilds").then(function(r){return r.json();}).then(function(gs){
+    var hash=gs.map(function(g){return g.id;}).join(",");
+    if(hash===_srvHash)return;
+    _srvHash=hash;
+    var list=document.getElementById("srvList"),aid=curServer?curServer.id:null;
+    list.innerHTML="";
+    if(!gs.length){list.innerHTML='<div style="padding:10px 12px;font-size:12px;color:var(--mut)">No servers found</div>';return;}
+    gs.forEach(function(g){
+      var el=document.createElement("div");el.className="srv"+(g.id===aid?" active":"");el.id="srv-"+g.id;
+      var avContent=g.icon?'<img src="'+esc(g.icon)+'" style="width:32px;height:32px;border-radius:inherit;object-fit:cover">':'<span>'+ini(g.name)+'</span>';
+      el.innerHTML='<div class="av" style="background:'+ac(g.name)+'">'+avContent+'</div>'
+        +'<span class="item-name">'+esc(g.name)+'</span>';
+      el.onclick=function(){pickServer(g,el);};list.appendChild(el);
+    });
+  }).catch(function(){});
+}
+
+function pickServer(g,el){
+  document.querySelectorAll(".srv").forEach(function(e){e.classList.remove("active");});
+  el.classList.add("active");curServer=g;curChan=null;curChanId=null;
+  cancelReply();document.getElementById("composer").style.display="none";document.getElementById("sendBtn").disabled=true;
+  if(evtSrc){evtSrc.close();evtSrc=null;}
+  document.getElementById("srvMgmtBtn").style.display="flex";
+  var bar=document.getElementById("chanBar");bar.innerHTML='<span class="chan-lbl"># Channels</span>';
+  // Load guild info (perms) and channels in parallel
+  Promise.all([
+    fetch("/guild-info/"+g.id).then(function(r){return r.json();}),
+    fetch("/channels/"+g.id).then(function(r){return r.json();})
+  ]).then(function(results){
+    var info=results[0],cs=results[1];
+    if(info&&info.bot_perms)botPerms=info.bot_perms;
+    if(!cs||!cs.length){bar.innerHTML='<span style="font-size:12px;color:var(--mut);font-style:italic">No text channels</span>';return;}
+    cs.forEach(function(c){
+      var chip=document.createElement("div");chip.className="chip";
+      chip.innerHTML='<i class="ti ti-hash" style="font-size:12px;margin-right:3px;opacity:.6"></i>'+esc(c.name);
+      chip.onclick=function(){pickChannel(c,chip);};bar.appendChild(chip);
+    });
+  });
+  document.getElementById("msgLog").innerHTML='<div class="log-state"><i class="ti ti-hash"></i><div>Pick a channel</div></div>';
+  loadMembers(g.id);closeDM();
+}
+
+function pickChannel(c,chip){
+  document.querySelectorAll(".chip").forEach(function(ch){ch.classList.remove("active");});
+  chip.classList.add("active");curChan=c.name;curChanId=c.id;cancelReply();
+  document.getElementById("composer").style.display="block";
+  document.getElementById("sendBtn").disabled=false;
+  document.getElementById("msgInput").placeholder="Message #"+c.name+"…";
+  document.getElementById("msgInput").focus();
+  refreshBotPills();loadHistory(c.id);connectSSE(c.id);
+}
+
+/* ── members ── */
+function loadMembers(guildId){
+  var list=document.getElementById("memberList");
+  list.innerHTML='<div class="member-empty"><i class="ti ti-loader spinning" style="font-size:18px"></i></div>';
+  memberMap={};
+  // Also load roles for mod modal
+  fetch("/roles/"+guildId).then(function(r){return r.json();}).then(function(rs){
+    if(Array.isArray(rs))guildRoles=rs;
+  }).catch(function(){guildRoles=[];});
+  Promise.all([
+    fetch("/members/"+guildId).then(function(r){return r.json();}),
+    fetch("/guild-bots/"+guildId).then(function(r){return r.json();}).catch(function(){return[];})
+  ]).then(function(results){
+    var members=results[0],bots=Array.isArray(results[1])?results[1]:[];
+    if(members.error){list.innerHTML='<div class="member-empty">'+esc(members.error)+'</div>';return;}
+    members.forEach(function(m){memberMap[m.id]=m;});
+    renderMembers(members,bots);
+  }).catch(function(){list.innerHTML='<div class="member-empty">Failed to load</div>';});
+}
+
+function renderMembers(members,bots){
+  var groups={online:[],idle:[],dnd:[],offline:[]};
+  members.forEach(function(m){(groups[m.status]||groups.offline).push(m);});
+  var list=document.getElementById("memberList");list.innerHTML="";
+  var order=[["online","Online"],["idle","Idle"],["dnd","Do Not Disturb"],["offline","Offline"]];
+  order.forEach(function(pair){
+    var key=pair[0],label=pair[1],arr=groups[key];
+    if(!arr.length)return;
+    var gl=document.createElement("div");gl.className="member-group-label";
+    gl.textContent=label+" — "+arr.length;list.appendChild(gl);
+    arr.forEach(function(m){
+      var el=document.createElement("div");el.className="member-item";
+      var roleColor=m.roles&&m.roles[0]&&m.roles[0].color&&m.roles[0].color!=="Default"?m.roles[0].color:ac(m.name);
+      el.innerHTML='<div class="member-av" style="background:'+roleColor+'">'+ini(m.name)
+        +'<div class="m-status '+statusDotClass(m.status)+'"></div></div>'
+        +'<span class="member-name">'+esc(m.name)+'</span>'
+        +'<div class="member-actions">'
+        +'<button class="mem-act-btn" data-act="dm" title="Send DM"><i class="ti ti-message-2"></i></button>'
+        +(hasAnyMod()?'<button class="mem-act-btn" data-act="mod" title="Moderate"><i class="ti ti-shield"></i></button>':'')
+        +'</div>';
+      el.querySelector('[data-act="dm"]').addEventListener("click",function(e){e.stopPropagation();openDM(m);});
+      var modBtn=el.querySelector('[data-act="mod"]');
+      if(modBtn)modBtn.addEventListener("click",function(e){e.stopPropagation();openModModal(m);});
+      el.addEventListener("click",function(){openDM(m);});
+      list.appendChild(el);
+    });
+  });
+  if(bots&&bots.length){
+    var botGrp=document.createElement("div");botGrp.className="member-group-label";
+    botGrp.innerHTML='<i class="ti ti-robot" style="font-size:10px;margin-right:3px"></i>Bots — '+bots.length;
+    list.appendChild(botGrp);
+    bots.forEach(function(b){
+      var el=document.createElement("div");el.className="member-item";
+      el.innerHTML='<div class="member-av" style="background:'+ac(b.name)+'">'+ini(b.name)
+        +'<div class="m-status '+statusDotClass(b.status)+'"></div></div>'
+        +'<span class="member-name">'+esc(b.name)+'</span>'
+        +'<span class="badge b-bot" style="font-size:9px;padding:1px 5px">BOT</span>';
+      list.appendChild(el);
+    });
+  }
+  if(!list.children.length)list.innerHTML='<div class="member-empty">No members</div>';
+}
+function hasAnyMod(){
+  return botPerms.kick_members||botPerms.ban_members||botPerms.moderate_members||botPerms.manage_roles||botPerms.administrator;
+}
+
+/* ── history + SSE ── */
+function loadHistory(cid){
+  var log=document.getElementById("msgLog");
+  log.innerHTML='<div class="log-state"><i class="ti ti-loader spinning"></i><div>Loading…</div></div>';
+  msgStore.clear();
+  fetch("/history/"+cid).then(function(r){return r.json();}).then(function(msgs){
+    log.innerHTML="";
+    if(msgs.error){log.innerHTML='<div class="log-state"><i class="ti ti-lock"></i><div>'+esc(msgs.error)+"</div></div>";return;}
+    if(!msgs.length){log.innerHTML='<div class="log-state"><i class="ti ti-message-off"></i><div>No messages yet</div></div>';return;}
+    var frag=document.createDocumentFragment();
+    var lastAuthor=null,lastTime=0;
+    msgs.forEach(function(m){
+      var ts=new Date(m.timestamp).getTime();
+      var grouped=m.author_id===lastAuthor&&(ts-lastTime)<300000&&!m.reference&&!m.notify;
+      frag.appendChild(buildMsg(m,!grouped));
+      lastAuthor=m.author_id;lastTime=ts;
+    });
+    log.appendChild(frag);log.scrollTop=log.scrollHeight;
+  }).catch(function(){log.innerHTML='<div class="log-state"><i class="ti ti-wifi-off"></i><div>Failed to load</div></div>';});
+}
+
+function connectSSE(cid){
+  if(evtSrc){evtSrc.close();evtSrc=null;}
+  evtSrc=new EventSource("/events/"+cid);
+  evtSrc.onmessage=function(e){
+    try{
+      var msg=JSON.parse(e.data);
+      if(msg.type==="ping")return;
+      if(msg.type==="shutdown"){showNukeOverlay();return;}
+      var log=document.getElementById("msgLog"),ph=log.querySelector(".log-state");if(ph)ph.remove();
+      log.appendChild(buildMsg(msg,true));log.scrollTop=log.scrollHeight;
+      if(msg.notify){
+        notifCount++;lastNotifId=msg.id;
+        document.getElementById("notifBadge").textContent=notifCount;
+        document.getElementById("notifBadge").style.display="block";
+        showToast((msg.is_reply_to_bot?msg.author+" replied to the bot!":msg.author+" mentioned the bot!"),"warn","ti-bell-ringing");
+      }
+    }catch(err){}
+  };
+  evtSrc.onerror=function(){};
+}
+
+/* ── message builder ── */
+function buildMsg(msg,showHeader){
+  if(showHeader===undefined)showHeader=true;
+  msgStore.set(msg.id,msg);
+  var status=memberMap[msg.author_id]?memberMap[msg.author_id].status:"offline";
+  var el=document.createElement("div");
+  el.className="msg-item"+(showHeader?" has-header":"")+(msg.notify?" notif":"");
+  el.id="msg-"+msg.id;
+  var h="";
+  if(msg.reference){
+    h+='<div class="ref-bar" data-rid="'+msg.reference.id+'"><i class="ti ti-corner-up-left"></i>'
+      +'<span class="ref-author">'+esc(msg.reference.author)+'</span> '
+      +'<span class="ref-content">'+esc((msg.reference.content||"(empty)").slice(0,80))+"</span></div>";
+  }
+  if(msg.is_reply_to_bot)h+='<div class="notif-bar"><i class="ti ti-bell-ringing"></i> Replied to the bot</div>';
+  else if(msg.mentions_bot)h+='<div class="notif-bar"><i class="ti ti-at"></i> Mentioned the bot</div>';
+  var badges="";
+  if(msg.is_bot)badges+='<span class="badge b-bot">BOT</span>';
+  if(msg.is_reply_to_bot)badges+='<span class="badge b-reply">reply to bot</span>';
+  else if(msg.mentions_bot)badges+='<span class="badge b-mention">mentioned bot</span>';
+  var m=msg.author_id&&memberMap[msg.author_id];
+  var avColor=m&&m.roles&&m.roles[0]&&m.roles[0].color&&m.roles[0].color!=="Default"?m.roles[0].color:ac(msg.author);
+  h+='<div class="msg-body">'
+    +'<div class="msg-av-wrap" data-id="'+esc(msg.author_id||"")+'" data-name="'+esc(msg.author)+'">'
+    +'<div class="msg-av" style="background:'+avColor+'">'+ini(msg.author)+'</div>'
+    +'</div>'
+    +'<div class="msg-ts-compact">'+fmt(msg.timestamp)+'</div>'
+    +'<div class="msg-right"><div class="msg-meta">'
+    +'<span class="msg-author" data-id="'+esc(msg.author_id||"")+'" data-name="'+esc(msg.author)+'">'+esc(msg.author)+'</span>'
+    +'<span class="msg-time">'+fmt(msg.timestamp)+"</span>"+badges+"</div>"
+    +'<div class="msg-text">'+(esc(msg.content)||'<span style="opacity:.35">(no content)</span>')+"</div></div></div>";
+  var canModMember=!msg.is_bot&&msg.author_id&&hasAnyMod();
+  var acts='<div class="msg-acts">';
+  acts+='<button class="act-btn" data-act="reply" title="Reply"><i class="ti ti-corner-up-right"></i> Reply</button>';
+  if(canModMember)acts+='<button class="act-btn" data-act="mod" title="Moderate member"><i class="ti ti-shield"></i></button>';
+  if(msg.can_delete)acts+='<button class="act-btn del" data-act="delete" title="Delete message"><i class="ti ti-trash"></i></button>';
+  acts+='</div>';
+  h+=acts;
+  el.innerHTML=h;
+
+  var rb=el.querySelector(".ref-bar");
+  if(rb)rb.addEventListener("click",function(e){e.stopPropagation();scrollToMsg(msg.reference.id);});
+  el.querySelector('[data-act="reply"]').addEventListener("click",function(e){e.stopPropagation();setReply(msg.id);});
+  var modBtn=el.querySelector('[data-act="mod"]');
+  if(modBtn)modBtn.addEventListener("click",function(e){
+    e.stopPropagation();
+    var mem=memberMap[msg.author_id]||{id:msg.author_id,name:msg.author,status:"offline",roles:[]};
+    openModModal(mem);
+  });
+  var delBtn=el.querySelector('[data-act="delete"]');
+  if(delBtn)delBtn.addEventListener("click",function(e){
+    e.stopPropagation();deleteMsg(msg.channel_id||curChanId,msg.id,el);
+  });
+  el.querySelector(".msg-av-wrap").addEventListener("click",function(e){
+    e.stopPropagation();
+    var mid=this.dataset.id,mname=this.dataset.name;
+    var mem=mid&&memberMap[mid]?memberMap[mid]:{id:mid,name:mname,status:"offline",roles:[]};
+    openDM(mem);
+  });
+  el.querySelector(".msg-author").addEventListener("click",function(e){
+    e.stopPropagation();
+    var mid=this.dataset.id,mname=this.dataset.name;
+    var mem=mid&&memberMap[mid]?memberMap[mid]:{id:mid,name:mname,status:"offline",roles:[]};
+    openDM(mem);
+  });
+  el.addEventListener("click",function(){setReply(msg.id);});
+  return el;
+}
+
+/* ── delete message ── */
+function deleteMsg(chanId,msgId,el){
+  if(!chanId||!msgId)return;
+  el.style.opacity="0.4";el.style.pointerEvents="none";
+  fetch("/message/"+chanId+"/"+msgId,{method:"DELETE"})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){
+        el.style.transition="all .18s";el.style.opacity="0";el.style.transform="translateX(-6px)";
+        setTimeout(function(){el.remove();},180);
+        showToast("Deleted","ok","ti-trash");
+      } else {
+        el.style.opacity="";el.style.pointerEvents="";
+        showToast(d.error||"Could not delete","err","ti-alert-circle");
+      }
+    }).catch(function(){el.style.opacity="";el.style.pointerEvents="";showToast("Network error","err","ti-wifi-off");});
+}
+
+/* ── DM view ── */
+function openDM(member){
+  if(!member)return;
+  dmTarget=member;
+  if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
+  var av=document.getElementById("dmTitleAv");
+  av.style.background=ac(member.name);
+  var dot=document.getElementById("dmTitleDot");
+  while(av.firstChild&&av.firstChild!==dot)av.removeChild(av.firstChild);
+  av.insertBefore(document.createTextNode(ini(member.name)),dot);
+  dot.className="dm-av-dot "+statusDotClass(member.status);
+  document.getElementById("dmTitleName").textContent=member.name;
+  var chip=document.getElementById("dmStatusChip");
+  chip.textContent=member.status||"offline";chip.className="dm-status-chip "+(member.status||"offline");
+  var introAv=document.getElementById("dmIntroAv");
+  introAv.style.background=ac(member.name);
+  var introDot=document.getElementById("dmIntroDot");
+  while(introAv.firstChild&&introAv.firstChild!==introDot)introAv.removeChild(introAv.firstChild);
+  introAv.insertBefore(document.createTextNode(ini(member.name)),introDot);
+  introDot.className="dm-intro-dot "+statusDotClass(member.status);
+  document.getElementById("dmIntroName").textContent=member.name;
+  document.getElementById("dmIntroNameB").textContent=member.name;
+  var container=document.getElementById("dmMsgs");
+  container.querySelectorAll(".msg-item").forEach(function(r){r.remove();});
+  if(member.id){
+    document.getElementById("dmLoading").style.display="flex";
+    fetch("/dm-history/"+member.id)
+      .then(function(r){return r.json();})
+      .then(function(data){
+        document.getElementById("dmLoading").style.display="none";
+        if(data.error){showToast("DM history: "+data.error,"warn","ti-info-circle");return;}
+        dmChannelId=data.channel_id||null;
+        var frag=document.createDocumentFragment();
+        (data.messages||[]).forEach(function(m){m.channel_id=dmChannelId;frag.appendChild(buildMsg(m,true));});
+        container.insertBefore(frag,document.getElementById("dmLoading"));
+        container.scrollTop=container.scrollHeight;
+      }).catch(function(){
+        document.getElementById("dmLoading").style.display="none";
+        showToast("Could not load DM history","err","ti-wifi-off");
+      });
+    dmEvtSrc=new EventSource("/dm-events/"+member.id);
+    dmEvtSrc.onmessage=function(e){
+      try{
+        var msg=JSON.parse(e.data);
+        if(msg.type==="ping")return;
+        if(msg.type==="shutdown"){showNukeOverlay();return;}
+        if(dmChannelId)msg.channel_id=dmChannelId;
+        var el=buildMsg(msg,true);
+        container.insertBefore(el,document.getElementById("dmLoading"));
+        container.scrollTop=container.scrollHeight;
+        if(!msg.is_bot){
+          notifCount++;lastNotifId=msg.id;
+          document.getElementById("notifBadge").textContent=notifCount;
+          document.getElementById("notifBadge").style.display="block";
+          showToast("📨 DM from "+msg.author,"warn","ti-bell-ringing");
+        }
+      }catch(err){}
+    };
+  }
+  document.getElementById("dmView").classList.add("open");
+  document.getElementById("dmInput").focus();
+}
+function closeDM(){
+  document.getElementById("dmView").classList.remove("open");
+  if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
+  dmTarget=null;dmChannelId=null;
+}
+function sendDM(){
+  var input=document.getElementById("dmInput"),text=input.value.trim();
+  if(!text||!dmTarget||!dmTarget.id)return;
+  var btn=document.getElementById("dmSendBtn");btn.disabled=true;
+  fetch("/dm",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({user_id:dmTarget.id,content:text,bot_id:activeBotId})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){
+        input.value="";input.style.height="";
+        if(d.channel_id)dmChannelId=d.channel_id;
+        var sentMsg={id:d.message_id||("local-"+Date.now()),
+          author:document.getElementById("statusText").textContent||"Bot",
+          author_id:"me",content:text,timestamp:new Date().toISOString(),
+          is_bot:true,can_delete:true,channel_id:dmChannelId};
+        var container=document.getElementById("dmMsgs");
+        container.insertBefore(buildMsg(sentMsg,true),document.getElementById("dmLoading"));
+        container.scrollTop=container.scrollHeight;
+        showToast("DM sent","ok","ti-check");
+      } else showToast(d.error||"Failed to send DM","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");})
+    .finally(function(){btn.disabled=false;});
+}
+
+/* ── reply ── */
+function setReply(msgId){
+  var msg=msgStore.get(msgId);if(!msg)return;replyMsg=msg;
+  document.getElementById("replyAuthor").textContent="@"+msg.author;
+  document.getElementById("replyPreview").textContent=(msg.content||"(empty)").slice(0,80);
+  document.getElementById("replyBar").style.display="flex";
+  document.getElementById("msgInput").placeholder="Reply to "+msg.author+"…";
+  document.getElementById("msgInput").focus();
+  var t=document.getElementById("msg-"+msgId);
+  if(t){t.style.background="rgba(192,57,43,.2)";setTimeout(function(){t.style.background=""},900);}
+}
+function cancelReply(){
+  replyMsg=null;document.getElementById("replyBar").style.display="none";
+  if(curChan)document.getElementById("msgInput").placeholder="Message #"+curChan+"…";
+}
+
+/* ── send channel msg ── */
+function doSend(){
+  var input=document.getElementById("msgInput"),text=input.value.trim();
+  if(!text||!curChanId)return;
+  var btn=document.getElementById("sendBtn");btn.disabled=true;
+  var ep=replyMsg?"/reply":"/send";
+  var body=replyMsg
+    ?{channel_id:curChanId,message_id:replyMsg.id,content:text,bot_id:activeBotId}
+    :{channel_id:curChanId,message:text,bot_id:activeBotId};
+  fetch(ep,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){input.value="";input.style.height="";document.getElementById("charCount").textContent="";cancelReply();showToast("Sent!","ok","ti-check");}
+      else showToast(d.error||"Failed","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");})
+    .finally(function(){btn.disabled=false;});
+}
+
+/* ── search ── */
+var _searchDeb=null;
+function toggleSearch(){
+  var bar=document.getElementById("searchBar");
+  if(bar.classList.contains("open")){closeSearch();}
+  else{bar.classList.add("open");document.getElementById("searchInput").focus();}
+}
+function closeSearch(){
+  document.getElementById("searchBar").classList.remove("open");
+  document.getElementById("searchResults").innerHTML="";
+  document.getElementById("searchResults").classList.remove("open");
+  document.getElementById("searchInput").value="";
+}
+document.getElementById("searchInput").addEventListener("input",function(){
+  var q=this.value.trim();
+  clearTimeout(_searchDeb);
+  if(!q||!curChanId){document.getElementById("searchResults").innerHTML="";document.getElementById("searchResults").classList.remove("open");return;}
+  _searchDeb=setTimeout(function(){
+    fetch("/search/"+curChanId+"?q="+encodeURIComponent(q))
+      .then(function(r){return r.json();})
+      .then(function(hits){
+        var box=document.getElementById("searchResults");
+        box.classList.add("open");
+        if(!hits.length){box.innerHTML='<div class="search-empty">No results</div>';return;}
+        var html="";
+        hits.forEach(function(h){
+          var hl=esc(h.content).replace(new RegExp(esc(q),"gi"),function(m){return'<mark>'+m+'</mark>';});
+          html+='<div class="search-hit" data-mid="'+esc(h.id)+'">'
+            +'<div class="search-hit-meta"><strong>'+esc(h.author)+'</strong> · '+fmt(h.timestamp)+'</div>'
+            +'<div class="search-hit-text">'+hl+'</div></div>';
+        });
+        box.innerHTML=html;
+        box.querySelectorAll(".search-hit").forEach(function(el){
+          el.addEventListener("click",function(){
+            scrollToMsg(this.dataset.mid);closeSearch();
+          });
+        });
+      }).catch(function(){});
+  },300);
+});
+
+/* ── custom bots ── */
+function toggleAddBot(){
+  var f=document.getElementById("addBotForm"),btn=document.getElementById("addBotToggle");
+  var show=f.style.display!=="flex";f.style.display=show?"flex":"none";
+  btn.innerHTML=show?'<i class="ti ti-x"></i>':'<i class="ti ti-plus"></i>';
+  if(show)document.getElementById("newBotToken").focus();
+}
+function addBot(){
+  var token=document.getElementById("newBotToken").value.trim();
+  var name=document.getElementById("newBotName").value.trim()||"Custom Bot";
+  if(!token){showToast("Enter a bot token","err","ti-alert-circle");return;}
+  var btn=document.getElementById("connectBotBtn");btn.disabled=true;
+  btn.innerHTML='<i class="ti ti-loader spinning"></i> Verifying…';
+  fetch("/bots",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:token,name:name})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){document.getElementById("newBotToken").value="";document.getElementById("newBotName").value="";
+        toggleAddBot();loadBots();showToast("Connected: "+d.username,"ok","ti-robot");
+      } else showToast(d.error||"Invalid token","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");})
+    .finally(function(){btn.disabled=false;btn.innerHTML='<i class="ti ti-plug-connected"></i> Connect';});
+}
+function deleteBot(id){
+  fetch("/bots/"+id,{method:"DELETE"}).then(function(){
+    if(activeBotId===id){activeBotId="main";refreshBotPills();}
+    loadBots();showToast("Bot removed","ok","ti-check");
+  });
+}
+function loadBots(){
+  fetch("/bots").then(function(r){return r.json();}).then(function(bots){
+    customBots={};var list=document.getElementById("botList");list.innerHTML="";
+    bots.forEach(function(b){
+      customBots[b.id]=b;
+      var el=document.createElement("div");el.className="bot-item";
+      el.innerHTML='<div class="av" style="background:'+ac(b.name)+'">'+ini(b.name)+"</div>"
+        +'<span class="item-name">'+esc(b.name)+"</span>"
+        +'<button class="del-btn" title="Remove" onclick="event.stopPropagation();deleteBot(\''+b.id+'\')"><i class="ti ti-trash"></i></button>';
+      list.appendChild(el);
+    });
+    refreshBotPills();
+  });
+}
+if(SESSION_TOKEN)loadBots();
+function refreshBotPills(){
+  var sel=document.getElementById("botSelector"),opts=document.getElementById("botOptions");
+  opts.innerHTML="";
+  var mn=document.getElementById("statusText").textContent||"Main Bot";
+  var mp=document.createElement("div");mp.className="bot-pill"+(activeBotId==="main"?" active":"");mp.dataset.id="main";
+  mp.innerHTML='<div class="mini-av" style="background:var(--acc)">'+ini(mn)+"</div><span>"+esc(mn)+"</span>";
+  mp.onclick=function(){selectBot("main");};opts.appendChild(mp);
+  Object.keys(customBots).forEach(function(id){
+    var b=customBots[id],pill=document.createElement("div");
+    pill.className="bot-pill"+(activeBotId===id?" active":"");pill.dataset.id=id;
+    pill.innerHTML='<div class="mini-av" style="background:'+ac(b.name)+'">'+ini(b.name)+"</div><span>"+esc(b.name)+"</span>";
+    pill.onclick=function(){selectBot(id);};opts.appendChild(pill);
+  });
+  sel.style.display=Object.keys(customBots).length>0?"block":"none";
+}
+function selectBot(id){
+  activeBotId=id;
+  document.querySelectorAll(".bot-pill").forEach(function(p){p.classList.remove("active");});
+  var a=document.querySelector('.bot-pill[data-id="'+id+'"]');if(a)a.classList.add("active");
+}
+
+/* ── misc ── */
+function scrollToMsg(id){
+  var el=document.getElementById("msg-"+id);
+  if(el){el.scrollIntoView({behavior:"smooth",block:"center"});el.style.background="rgba(192,57,43,.25)";setTimeout(function(){el.style.background=""},1200);}
+}
+function jumpToNotif(){
+  if(!lastNotifId)return;
+  notifCount=0;document.getElementById("notifBadge").style.display="none";
+  scrollToMsg(lastNotifId);
+}
+
+/* ── moderation modal ── */
+function openModModal(member){
+  if(!member||!curServer)return;
+  modTarget=member;
+  // Header
+  document.getElementById("modAv").style.background=ac(member.name);
+  document.getElementById("modAv").textContent=ini(member.name);
+  document.getElementById("modName").textContent=member.name;
+  document.getElementById("modMeta").textContent="ID: "+(member.id||"unknown")+(member.joined_at?" · Joined "+new Date(member.joined_at).toLocaleDateString():"");
+  // Reset reason
+  document.getElementById("modReason").value="";
+  document.getElementById("modNick").value="";
+  // Show/hide action buttons based on perms
+  document.getElementById("modKickBtn").style.display=(botPerms.kick_members||botPerms.administrator)?"":"none";
+  document.getElementById("modBanBtn").style.display=(botPerms.ban_members||botPerms.administrator)?"":"none";
+  document.getElementById("modTimeoutBtn").style.display=(botPerms.moderate_members||botPerms.administrator)?"":"none";
+  // Load role tab
+  renderModRoles(member);
+  // Perms tab
+  renderModPerms();
+  // Switch to actions tab
+  switchModTab("actions");
+  document.getElementById("modModal").classList.add("open");
+}
+function closeModModal(){
+  document.getElementById("modModal").classList.remove("open");
+  modTarget=null;
+}
+document.querySelectorAll(".mod-tab").forEach(function(tab){
+  tab.addEventListener("click",function(){switchModTab(this.dataset.tab);});
+});
+function switchModTab(name){
+  document.querySelectorAll(".mod-tab").forEach(function(t){t.classList.remove("active");});
+  document.querySelectorAll(".mod-section").forEach(function(s){s.classList.remove("active");});
+  document.querySelector('.mod-tab[data-tab="'+name+'"]').classList.add("active");
+  document.getElementById("modTab-"+name).classList.add("active");
+}
+function renderModRoles(member){
+  var box=document.getElementById("modRoleList");
+  if(!guildRoles.length){box.innerHTML='<div style="color:var(--mut);font-size:13px;text-align:center;padding:12px">No roles available or bot lacks Manage Roles</div>';return;}
+  var memberRoleIds=new Set((member.roles||[]).map(function(r){return r.id;}));
+  var html='<div class="role-list">';
+  guildRoles.forEach(function(role){
+    var has=memberRoleIds.has(role.id);
+    var canAssign=role.assignable&&(botPerms.manage_roles||botPerms.administrator);
+    html+='<div class="role-row">'
+      +'<div class="role-dot" style="background:'+esc(role.color)+'"></div>'
+      +'<span class="role-name">'+esc(role.name)+'</span>'
+      +'<span class="role-count">'+esc(String(role.member_count))+'</span>';
+    if(canAssign){
+      html+='<button class="role-toggle'+(has?" has-role":"")+'" data-rid="'+esc(role.id)+'" data-has="'+(has?"1":"0")+'">'
+        +(has?'<i class="ti ti-minus"></i>':'<i class="ti ti-plus"></i>')+'</button>';
+    } else {
+      html+='<span style="font-size:11px;color:var(--mut)">'+esc(has?"✓":"")+'</span>';
+    }
+    html+='</div>';
+  });
+  html+='</div>';
+  box.innerHTML=html;
+  box.querySelectorAll(".role-toggle").forEach(function(btn){
+    btn.addEventListener("click",function(){toggleMemberRole(this.dataset.rid,this.dataset.has==="1");});
+  });
+}
+function toggleMemberRole(roleId,currentlyHas){
+  if(!modTarget||!curServer)return;
+  var method=currentlyHas?"DELETE":"PUT";
+  fetch("/roles/"+curServer.id+"/"+modTarget.id+"/"+roleId,{method:method,headers:{"Content-Type":"application/json"}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){
+        showToast(currentlyHas?"Role removed":"Role assigned","ok","ti-check");
+        // Refresh member data and re-render roles
+        var updatedMember=memberMap[modTarget.id]||modTarget;
+        if(currentlyHas){updatedMember.roles=(updatedMember.roles||[]).filter(function(r){return r.id!==roleId;});}
+        else{var role=guildRoles.find(function(r){return r.id===roleId;});if(role)(updatedMember.roles=updatedMember.roles||[]).push(role);}
+        modTarget=updatedMember;renderModRoles(updatedMember);
+      } else showToast(d.error||"Failed","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");});
+}
+function renderModPerms(){
+  var perms=[
+    ["send_messages","Send Messages"],["manage_messages","Manage Messages"],
+    ["kick_members","Kick Members"],["ban_members","Ban Members"],
+    ["moderate_members","Timeout Members"],["manage_roles","Manage Roles"],
+    ["manage_channels","Manage Channels"],["manage_guild","Manage Server"],
+    ["administrator","Administrator"],
+  ];
+  var html="";
+  perms.forEach(function(p){
+    var has=botPerms[p[0]]||botPerms.administrator;
+    html+='<div class="perm-item"><i class="ti '+(has?"ti-circle-check has":"ti-circle-x no")+'" style="font-size:14px"></i>'
+      +'<span style="font-size:12px">'+esc(p[1])+'</span></div>';
+  });
+  document.getElementById("modPermGrid").innerHTML=html;
+}
+function doKick(){
+  if(!modTarget||!curServer)return;
+  var reason=document.getElementById("modReason").value.trim()||"Kicked via dashboard";
+  if(!confirm("Kick "+modTarget.name+"?"))return;
+  document.getElementById("modKickBtn").disabled=true;
+  fetch("/kick/"+curServer.id+"/"+modTarget.id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reason:reason})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){closeModModal();showToast(modTarget&&modTarget.name+" kicked","ok","ti-user-minus");loadMembers(curServer.id);}
+      else showToast(d.error||"Failed to kick","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");})
+    .finally(function(){var b=document.getElementById("modKickBtn");if(b)b.disabled=false;});
+}
+function doBan(){
+  if(!modTarget||!curServer)return;
+  var reason=document.getElementById("modReason").value.trim()||"Banned via dashboard";
+  if(!confirm("Ban "+modTarget.name+"? This cannot be undone from here."))return;
+  document.getElementById("modBanBtn").disabled=true;
+  fetch("/ban/"+curServer.id+"/"+modTarget.id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reason:reason,delete_days:0})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){closeModModal();showToast(modTarget&&modTarget.name+" banned","ok","ti-hammer");loadMembers(curServer.id);}
+      else showToast(d.error||"Failed to ban","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");})
+    .finally(function(){var b=document.getElementById("modBanBtn");if(b)b.disabled=false;});
+}
+function doTimeout(){
+  if(!modTarget||!curServer)return;
+  var dur=parseInt(document.getElementById("modTimeoutDur").value,10);
+  var reason=document.getElementById("modReason").value.trim()||"Timed out via dashboard";
+  document.getElementById("modTimeoutBtn").disabled=true;
+  fetch("/timeout/"+curServer.id+"/"+modTarget.id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({duration_ms:dur,reason:reason})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){
+        showToast(dur>0?"Timed out "+modTarget.name:"Timeout removed for "+modTarget.name,"ok","ti-clock-pause");
+        closeModModal();
+      } else showToast(d.error||"Failed","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");})
+    .finally(function(){var b=document.getElementById("modTimeoutBtn");if(b)b.disabled=false;});
+}
+function doSetNick(){
+  if(!modTarget||!curServer)return;
+  var nick=document.getElementById("modNick").value.trim()||null;
+  fetch("/nick/"+curServer.id+"/"+modTarget.id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nick:nick})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success)showToast("Nickname "+(nick?"set":"cleared"),"ok","ti-pencil");
+      else showToast(d.error||"Failed","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");});
+}
+
+/* ── server management panel ── */
+function openSrvPanel(){
+  if(!curServer)return;
+  document.getElementById("srvPanel").classList.add("open");
+  var av=document.getElementById("srvPanelAv");
+  av.style.background=ac(curServer.name);av.textContent=ini(curServer.name);
+  document.getElementById("srvPanelName").textContent=curServer.name;
+  document.getElementById("srvPanelBody").innerHTML='<div style="color:var(--mut);font-size:13px;text-align:center;padding:24px 0"><i class="ti ti-loader spinning" style="font-size:20px"></i></div>';
+  Promise.all([
+    fetch("/guild-info/"+curServer.id).then(function(r){return r.json();}),
+    fetch("/bans/"+curServer.id).then(function(r){return r.json();}).catch(function(){return[];})
+  ]).then(function(results){
+    var info=results[0],bans=Array.isArray(results[1])?results[1]:[];
+    renderSrvPanel(info,bans);
+  }).catch(function(){
+    document.getElementById("srvPanelBody").innerHTML='<div style="color:var(--red);font-size:13px;text-align:center;padding:24px 0">Failed to load server info</div>';
+  });
+}
+function closeSrvPanel(){document.getElementById("srvPanel").classList.remove("open");}
+function renderSrvPanel(info,bans){
+  var p=info.bot_perms||{};
+  var permKeys=[
+    ["administrator","Administrator"],["manage_guild","Manage Server"],
+    ["manage_channels","Manage Channels"],["manage_roles","Manage Roles"],
+    ["manage_messages","Manage Messages"],["kick_members","Kick Members"],
+    ["ban_members","Ban Members"],["moderate_members","Timeout Members"],
+    ["send_messages","Send Messages"],
+  ];
+  var permHtml=permKeys.map(function(pk){
+    var has=p[pk[0]]||p.administrator;
+    return '<span class="srv-perm-chip '+(has?"yes":"no")+'">'
+      +'<i class="ti '+(has?"ti-check":"ti-x")+'" style="font-size:11px"></i> '+esc(pk[1])+'</span>';
+  }).join("");
+
+  // Ban list
+  var banHtml="";
+  if(!(p.ban_members||p.administrator)){
+    banHtml='<div style="color:var(--mut);font-size:13px">Bot lacks Ban Members permission to view bans.</div>';
+  } else if(!bans.length){
+    banHtml='<div style="color:var(--mut);font-size:13px">No active bans.</div>';
+  } else {
+    banHtml='<div style="display:flex;flex-direction:column;gap:6px">';
+    bans.slice(0,20).forEach(function(b){
+      banHtml+='<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--comp);border-radius:var(--r)">'
+        +'<div style="width:28px;height:28px;border-radius:50%;background:'+ac(b.name)+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff">'+ini(b.name)+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;color:var(--txt)">'+esc(b.name)+'</div>'
+        +'<div style="font-size:11px;color:var(--mut)">'+esc(b.reason||"No reason")+'</div></div>'
+        +'<button onclick="doUnban(\''+esc(b.id)+'\',\''+esc(b.name)+'\')" style="padding:4px 10px;background:var(--acc);border:none;border-radius:var(--r);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Unban</button>'
+        +'</div>';
+    });
+    if(bans.length>20)banHtml+='<div style="font-size:12px;color:var(--mut);text-align:center">…and '+(bans.length-20)+' more</div>';
+    banHtml+='</div>';
+  }
+
+  var canCreateChan=p.manage_channels||p.administrator;
+  var canBulkDel=p.manage_messages||p.administrator;
+
+  var html='<div>';
+  html+='<div class="srv-section-title">Bot Permissions in '+esc(info.name||curServer.name)+'</div>';
+  html+='<div>'+permHtml+'</div>';
+
+  if(canCreateChan){
+    html+='<div style="margin-top:20px"><div class="srv-section-title">Create Channel</div>';
+    html+='<div class="channel-create-row">'
+      +'<input class="mod-input" id="newChanName" placeholder="channel-name" style="flex:1">'
+      +'<input class="mod-input" id="newChanTopic" placeholder="Topic (optional)" style="flex:1">'
+      +'<button onclick="doCreateChannel()" style="padding:10px 16px;background:var(--acc);border:none;border-radius:var(--r);color:#fff;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap"><i class="ti ti-plus"></i> Create</button>'
+      +'</div></div>';
+  }
+
+  if(canBulkDel&&curChanId){
+    html+='<div style="margin-top:20px"><div class="srv-section-title">Bulk Delete Messages</div>';
+    html+='<div class="bulk-del-row">'
+      +'<select id="bulkDelCount" class="mod-select" style="width:auto">'
+      +'<option value="10">10 messages</option><option value="25">25 messages</option>'
+      +'<option value="50">50 messages</option><option value="100">100 messages</option>'
+      +'</select>'
+      +'<button onclick="doBulkDelete()" style="padding:10px 16px;background:var(--red);border:none;border-radius:var(--r);color:#fff;font-size:14px;font-weight:600;cursor:pointer"><i class="ti ti-trash"></i> Delete from #'+esc(curChan||"current channel")+'</button>'
+      +'</div><div style="font-size:11px;color:var(--mut);margin-top:4px">Only messages less than 14 days old can be bulk deleted by Discord.</div>'
+      +'</div>';
+  }
+
+  html+='<div style="margin-top:20px"><div class="srv-section-title">Bans ('+bans.length+')</div>';
+  html+=banHtml+'</div>';
+  html+='</div>';
+  document.getElementById("srvPanelBody").innerHTML=html;
+}
+function doCreateChannel(){
+  var name=document.getElementById("newChanName").value.trim();
+  var topic=document.getElementById("newChanTopic").value.trim();
+  if(!name){showToast("Enter a channel name","err","ti-alert-circle");return;}
+  fetch("/channels/"+curServer.id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:name,topic:topic})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){
+        showToast("Channel #"+d.name+" created","ok","ti-hash");
+        // Refresh channel bar
+        fetch("/channels/"+curServer.id).then(function(r){return r.json();}).then(function(cs){
+          var bar=document.getElementById("chanBar");bar.innerHTML='<span class="chan-lbl"># Channels</span>';
+          cs.forEach(function(c){
+            var chip=document.createElement("div");chip.className="chip";
+            chip.innerHTML='<i class="ti ti-hash" style="font-size:12px;margin-right:3px;opacity:.6"></i>'+esc(c.name);
+            chip.onclick=function(){pickChannel(c,chip);};bar.appendChild(chip);
+          });
+        });
+        document.getElementById("newChanName").value="";document.getElementById("newChanTopic").value="";
+      } else showToast(d.error||"Failed","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");});
+}
+function doBulkDelete(){
+  if(!curChanId)return;
+  var count=parseInt(document.getElementById("bulkDelCount").value,10);
+  if(!confirm("Bulk delete up to "+count+" messages in #"+curChan+"? This cannot be undone."))return;
+  fetch("/bulk-delete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({channel_id:curChanId,count:count})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){
+        showToast("Deleted "+d.deleted+" messages","ok","ti-trash");
+        loadHistory(curChanId);
+      } else showToast(d.error||"Failed","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");});
+}
+function doUnban(userId,userName){
+  if(!curServer)return;
+  if(!confirm("Unban "+userName+"?"))return;
+  fetch("/ban/"+curServer.id+"/"+userId,{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.success){showToast(userName+" unbanned","ok","ti-check");openSrvPanel();}
+      else showToast(d.error||"Failed","err","ti-alert-circle");
+    }).catch(function(){showToast("Network error","err","ti-wifi-off");});
+}
+
+/* ── keyboard shortcuts ── */
+document.addEventListener("keydown",function(e){
+  if((e.ctrlKey||e.metaKey)&&e.key==="f"){e.preventDefault();if(curChanId)toggleSearch();}
+  if(e.key==="Escape"){closeSearch();closeModModal();closeSrvPanel();}
+});
+document.getElementById("msgInput").addEventListener("keydown",function(e){
+  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();doSend();}
+  if(e.key==="Escape")cancelReply();
+});
+document.getElementById("msgInput").addEventListener("input",function(){
+  this.style.height="auto";this.style.height=Math.min(this.scrollHeight,120)+"px";
+  var len=this.value.length,cc=document.getElementById("charCount");
+  if(len>1800){cc.textContent=len+"/2000";cc.className=len>2000?"over":"warn";}
+  else{cc.textContent="";cc.className="";}
+});
+document.getElementById("dmInput").addEventListener("keydown",function(e){
+  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendDM();}
+});
+document.getElementById("dmInput").addEventListener("input",function(){
+  this.style.height="auto";this.style.height=Math.min(this.scrollHeight,120)+"px";
+});
+// Close modal on backdrop click
+document.getElementById("modModal").addEventListener("click",function(e){if(e.target===this)closeModModal();});
+document.getElementById("srvPanel").addEventListener("click",function(e){if(e.target===this)closeSrvPanel();});
+</script>
+</body>
+</html>
