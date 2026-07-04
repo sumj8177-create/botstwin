@@ -501,7 +501,7 @@ textarea::placeholder{color:var(--mut)}
       <div class="auth-field"><label>Email</label><input class="auth-input" id="loginEmail" type="email" placeholder="you@example.com" autocomplete="email"></div>
       <div class="auth-field"><label>Password</label><input class="auth-input" id="loginPassword" type="password" placeholder="Your password" autocomplete="current-password"></div>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--sub);cursor:pointer">
-        <input type="checkbox" id="loginRemember" style="accent-color:var(--acc)"> Remember me for 30 days
+        <input type="checkbox" id="loginRemember" checked style="accent-color:var(--acc)"> Remember me for 30 days
       </label>
       <div class="auth-err" id="loginErr"></div>
       <button class="auth-btn" id="loginBtn" onclick="doAuthLogin()"><i class="ti ti-login"></i> Sign In</button>
@@ -537,6 +537,49 @@ textarea::placeholder{color:var(--mut)}
     </div>
   </div>
 </div>
+
+<!-- Account Panel -->
+<div id="accountPanel" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);align-items:center;justify-content:center">
+  <div style="background:var(--sb);border:1px solid var(--bord);border-radius:var(--r-xl);width:100%;max-width:520px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6)">
+    <div style="display:flex;align-items:center;padding:18px 20px 0;gap:12px">
+      <i class="ti ti-user-circle" style="font-size:22px;color:var(--acc)"></i>
+      <span id="apUserLabel" style="font-size:16px;font-weight:700;flex:1"></span>
+      <button onclick="closeAccountPanel()" style="background:none;border:none;cursor:pointer;color:var(--mut);font-size:20px;line-height:1;padding:4px"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="display:flex;border-bottom:1px solid var(--bord);padding:0 20px;margin-top:12px">
+      <button class="ap-tab active" onclick="switchApTab('history')" id="apTab-history" style="flex:1;padding:10px;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;border:none;background:none;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .1s"><i class="ti ti-history"></i> Login History</button>
+      <button class="ap-tab" onclick="switchApTab('tokens')" id="apTab-tokens" style="flex:1;padding:10px;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;border:none;background:none;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .1s"><i class="ti ti-key"></i> Saved Tokens</button>
+    </div>
+    <div style="overflow-y:auto;padding:16px 20px;flex:1">
+      <!-- History tab -->
+      <div id="apSection-history">
+        <p style="font-size:12px;color:var(--mut);margin-bottom:12px">Last 50 logins to your account.</p>
+        <div id="apHistoryList" style="display:flex;flex-direction:column;gap:6px">
+          <div style="color:var(--mut);font-size:13px;text-align:center;padding:20px">Loading…</div>
+        </div>
+      </div>
+      <!-- Tokens tab -->
+      <div id="apSection-tokens" style="display:none">
+        <p style="font-size:12px;color:var(--mut);margin-bottom:12px">Save up to 10 optional bot tokens for quick access. All tokens are stored encrypted on the server tied to your account.</p>
+        <div id="apTokenList" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div id="apAddTokenForm" style="display:none;flex-direction:column;gap:8px;margin-top:12px;padding:12px;background:var(--surf);border-radius:var(--r-lg)">
+          <input id="apTokLabel" class="auth-input" placeholder="Label (e.g. Moderation Bot)" maxlength="32">
+          <input id="apTokValue" class="auth-input" type="password" placeholder="Bot token" autocomplete="off" spellcheck="false">
+          <div style="display:flex;gap:8px">
+            <button onclick="submitSavedToken()" class="auth-btn" style="flex:1"><i class="ti ti-check"></i> Save</button>
+            <button onclick="document.getElementById('apAddTokenForm').style.display='none'" class="auth-btn" style="flex:0 0 auto;background:var(--surf);color:var(--sub)"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="auth-err" id="apTokErr"></div>
+        </div>
+        <button id="apAddTokBtn" onclick="showAddTokenForm()" class="auth-btn" style="margin-top:10px;background:var(--surf);color:var(--sub)"><i class="ti ti-plus"></i> Add Token Slot</button>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+.ap-tab.active{color:var(--txt)!important;border-bottom-color:var(--acc)!important}
+.ap-tab:hover{color:var(--txt)!important}
+</style>
 
 <!-- Token Gate -->
 <div id="tokenGate">
@@ -648,6 +691,7 @@ textarea::placeholder{color:var(--mut)}
   <div class="hdr-right">
     <a class="policy-link" href="/updates" target="_blank"><i class="ti ti-history"></i> Changelog</a>
     <button class="hdr-btn" id="srvMgmtBtn" onclick="openSrvPanel()" style="display:none" title="Server Management"><i class="ti ti-settings"></i></button>
+    <button class="hdr-btn" id="accountBtn" onclick="openAccountPanel()" style="display:none"><i class="ti ti-user-circle"></i> <span id="accountBtnLabel">Account</span></button>
     <button class="hdr-btn" id="logoutBtn" onclick="doLogout()" style="display:none"><i class="ti ti-logout"></i> Logout</button>
     <div class="notif-wrap" onclick="jumpToNotif()" title="Jump to notification"><i class="ti ti-bell"></i><span id="notifBadge"></span></div>
     <div class="status-pill"><div class="dot" id="statusDot"></div><span id="statusText">connecting...</span></div>
@@ -777,9 +821,11 @@ var _origFetch=window.fetch;
 window.fetch=function(url,opts){
   if(typeof url==="string"&&!url.startsWith("http")){
     opts=applyTokenHeader(opts||{});
+    // Attach saved session JWT as fallback when cookie might not be present
+    var _sj=null;try{_sj=localStorage.getItem("_s");}catch(x){}
+    if(_sj){if(!opts.headers)opts.headers={};if(!opts.headers["X-Session-Token"])opts.headers["X-Session-Token"]=_sj;}
   }
   return _origFetch.apply(this,[url,opts]).then(function(res){
-    // If backend returns 401 on any non-auth route, bounce to login
     if(res.status===401&&typeof url==="string"&&!url.startsWith("/auth")){
       showAuthGate();
     }
@@ -822,6 +868,14 @@ function setAuthErr(id,msg){
   if(el)el.innerHTML=msg?'<i class="ti ti-alert-circle"></i> '+msg:"";
 }
 
+// ── Profile cache (localStorage, obscure key) ──────────────────────────────
+var _PC_KEY="_c";
+function _saveProfile(u){try{localStorage.setItem(_PC_KEY,btoa(JSON.stringify({e:u.email,n:u.username,i:u.id,t:Date.now()})));}catch(x){}}
+function _loadProfile(){try{var r=localStorage.getItem(_PC_KEY);if(!r)return null;var p=JSON.parse(atob(r));if(Date.now()-p.t>30*24*3600*1000){localStorage.removeItem(_PC_KEY);return null;}return{email:p.e,username:p.n,id:p.i};}catch(x){return null;}}
+function _clearProfile(){try{localStorage.removeItem(_PC_KEY);}catch(x){}}
+// Pre-fill login email from cache so it loads instantly
+(function(){var p=_loadProfile();if(p){var el=document.getElementById("loginEmail");if(el&&!el.value)el.value=p.email;}})();
+
 function doAuthLogin(){
   var email=document.getElementById("loginEmail").value.trim();
   var pass=document.getElementById("loginPassword").value;
@@ -837,6 +891,9 @@ function doAuthLogin(){
   .then(function(res){
     if(res.ok&&res.d.success){
       _dashUser=res.d.user;
+      _saveProfile(res.d.user);
+      // Also persist JWT in localStorage as cookie backup
+      try{localStorage.setItem("_s",res.d.token);}catch(x){}
       hideAuthGate();
       onAuthSuccess();
     } else {
@@ -938,10 +995,14 @@ function doResetPassword(){
 }
 
 function onAuthSuccess(){
-  // Update logout button label to show username
   var lb=document.getElementById("logoutBtn");
   if(lb&&_dashUser)lb.title="Signed in as "+_dashUser.username;
-  // Show token gate if no bot token saved, otherwise continue as before
+  var ab=document.getElementById("accountBtn");
+  if(ab){
+    ab.style.display="flex";
+    var lbl=document.getElementById("accountBtnLabel");
+    if(lbl&&_dashUser)lbl.textContent=_dashUser.username||"Account";
+  }
   if(SESSION_TOKEN){
     submitToken();
   } else {
@@ -1009,6 +1070,124 @@ document.addEventListener("DOMContentLoaded",function(){
   }).catch(function(){showAuthView("login");});
 });
 
+/* ── account panel ── */
+var _apTab="history";
+function openAccountPanel(){
+  var p=document.getElementById("accountPanel");
+  p.style.display="flex";
+  if(_dashUser)document.getElementById("apUserLabel").textContent=_dashUser.username||_dashUser.email||"Account";
+  switchApTab("history");
+  _loadLoginHistory();
+}
+function closeAccountPanel(){document.getElementById("accountPanel").style.display="none";}
+document.addEventListener("keydown",function(e){if(e.key==="Escape")closeAccountPanel();});
+document.getElementById("accountPanel").addEventListener("click",function(e){if(e.target===this)closeAccountPanel();});
+
+function switchApTab(tab){
+  _apTab=tab;
+  ["history","tokens"].forEach(function(t){
+    document.getElementById("apSection-"+t).style.display=t===tab?"block":"none";
+    var bt=document.getElementById("apTab-"+t);
+    if(bt)bt.classList.toggle("active",t===tab);
+  });
+  if(tab==="tokens")_loadSavedTokens();
+}
+
+function _fmtTs(ts){
+  try{
+    var d=new Date(ts);
+    return d.toLocaleDateString()+" "+d.toLocaleTimeString();
+  }catch(e){return ts||"Unknown";}
+}
+function _deviceIcon(dt){
+  if(dt==="mobile")return "ti-device-mobile";
+  if(dt==="tablet")return "ti-device-tablet";
+  return "ti-device-desktop";
+}
+
+function _loadLoginHistory(){
+  var el=document.getElementById("apHistoryList");
+  el.innerHTML='<div style="color:var(--mut);font-size:13px;text-align:center;padding:20px">Loading…</div>';
+  _origFetch("/auth/login-history").then(function(r){return r.json();}).then(function(list){
+    if(!list||!list.length){el.innerHTML='<div style="color:var(--mut);font-size:13px;text-align:center;padding:20px">No login history yet.</div>';return;}
+    el.innerHTML=list.map(function(h,i){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surf);border-radius:var(--r);font-size:13px">'
+        +'<i class="ti '+_deviceIcon(h.deviceType)+'" style="color:var(--acc);font-size:16px;flex-shrink:0"></i>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-weight:600;color:var(--txt)">'+_esc(h.browser)+' on '+_esc(h.os)+'</div>'
+          +'<div style="color:var(--mut);font-size:11px">'+_esc(h.ip)+'</div>'
+        +'</div>'
+        +'<div style="font-size:11px;color:var(--mut);text-align:right;flex-shrink:0">'+_fmtTs(h.ts)+'</div>'
+      +'</div>';
+    }).join("");
+  }).catch(function(){el.innerHTML='<div style="color:var(--red);font-size:13px;text-align:center;padding:12px">Failed to load history.</div>';});
+}
+
+var _savedTokenMeta=[];
+function _loadSavedTokens(){
+  _origFetch("/auth/saved-tokens").then(function(r){return r.json();}).then(function(list){
+    _savedTokenMeta=list||[];
+    _renderSavedTokens();
+  }).catch(function(){});
+}
+function _renderSavedTokens(){
+  var el=document.getElementById("apTokenList");
+  var addBtn=document.getElementById("apAddTokBtn");
+  var slots=_savedTokenMeta;
+  if(!slots.length){
+    el.innerHTML='<div style="color:var(--mut);font-size:13px;text-align:center;padding:16px">No saved tokens yet.<br><span style="font-size:11px">Save up to 10 bot tokens for quick access.</span></div>';
+  } else {
+    el.innerHTML=slots.map(function(t,i){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--surf);border-radius:var(--r)">'
+        +'<i class="ti ti-key" style="color:var(--acc);flex-shrink:0"></i>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-weight:600;color:var(--txt);font-size:13px">'+_esc(t.label)+'</div>'
+          +'<div style="font-size:11px;color:var(--mut)">…'+_esc(t.hint)+'</div>'
+        +'</div>'
+        +'<button onclick="useSavedToken('+i+')" title="Use this token" style="background:var(--acc);border:none;border-radius:var(--r);color:#fff;cursor:pointer;padding:6px 10px;font-size:12px;font-family:inherit"><i class="ti ti-plug-connected"></i> Use</button>'
+        +'<button onclick="removeSavedToken('+i+')" title="Remove" style="background:none;border:none;color:var(--mut);cursor:pointer;padding:6px;font-size:16px"><i class="ti ti-trash"></i></button>'
+      +'</div>';
+    }).join("");
+  }
+  addBtn.style.display=slots.length>=10?"none":"flex";
+}
+function showAddTokenForm(){
+  document.getElementById("apAddTokenForm").style.display="flex";
+  document.getElementById("apTokErr").innerHTML="";
+  document.getElementById("apTokLabel").value="";
+  document.getElementById("apTokValue").value="";
+  document.getElementById("apAddTokBtn").style.display="none";
+}
+function submitSavedToken(){
+  var label=document.getElementById("apTokLabel").value.trim();
+  var token=document.getElementById("apTokValue").value.trim();
+  if(!token){document.getElementById("apTokErr").innerHTML='Token required.';return;}
+  _origFetch("/auth/saved-tokens",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({label:label||"Bot",token:token})})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.success){
+      document.getElementById("apAddTokenForm").style.display="none";
+      _loadSavedTokens();
+    } else {
+      document.getElementById("apTokErr").innerHTML=d.error||"Failed.";
+    }
+  }).catch(function(){document.getElementById("apTokErr").innerHTML="Could not reach server.";});
+}
+function removeSavedToken(i){
+  _origFetch("/auth/saved-tokens/"+i,{method:"DELETE"}).then(function(){_loadSavedTokens();}).catch(function(){});
+}
+function useSavedToken(i){
+  _origFetch("/auth/saved-tokens/"+i+"/use").then(function(r){return r.json();}).then(function(d){
+    if(d.token){
+      SESSION_TOKEN=d.token;saveToken(d.token);
+      document.getElementById("gateToken").value=d.token;
+      closeAccountPanel();
+      submitToken();
+    }
+  }).catch(function(){});
+}
+function _esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
 /* ── nuke / logout ── */
 function showNukeOverlay(){
   SESSION_TOKEN="";clearToken();
@@ -1018,7 +1197,7 @@ function showNukeOverlay(){
 }
 function doLogout(){
   _origFetch("/auth/logout",{method:"POST"}).catch(function(){});
-  _dashUser=null;clearToken();SESSION_TOKEN="";stopPolling();
+  _dashUser=null;clearToken();SESSION_TOKEN="";_clearProfile();try{localStorage.removeItem("_s");}catch(x){}stopPolling();
   if(evtSrc){evtSrc.close();evtSrc=null;}
   if(dmEvtSrc){dmEvtSrc.close();dmEvtSrc=null;}
   curServer=null;curChan=null;curChanId=null;replyMsg=null;notifCount=0;lastNotifId=null;
@@ -1033,6 +1212,7 @@ function doLogout(){
   document.getElementById("statusDot").className="dot";
   document.getElementById("statusText").textContent="connecting...";
   document.getElementById("logoutBtn").style.display="none";
+  document.getElementById("accountBtn").style.display="none";
   document.getElementById("srvMgmtBtn").style.display="none";
   document.getElementById("notifBadge").style.display="none";
   closeDM();
