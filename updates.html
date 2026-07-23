@@ -4,170 +4,325 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Update Log — Bot Dashboard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#170d0d;--card:#1f1010;--surf:#261414;--bord:#3d2222;
-  --acc:#c0392b;--acc2:#e05a4a;--adim:rgba(192,57,43,.12);
-  --green:#2ecc71;--txt:#f0e6e6;--sub:#b89090;--mut:#6b4040;
+  --bg:#313338;--sb:#2B2D31;--deep:#1E1F22;--panel:#2B2D31;
+  --surf:#35373C;--comp:#383A40;--bord:#3F4147;
+  --acc:#5865F2;--acc2:#7289da;--adim:rgba(88,101,242,.15);
+  --green:#23A559;--red:#F23F43;--yel:#F0B232;--pink:#EB459E;
+  --txt:#DBDEE1;--sub:#B5BAC1;--mut:#80848E;
+  --r:4px;--r-lg:8px;--r-xl:16px;
 }
 html{scroll-behavior:smooth}
-body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:15px;line-height:1.7}
+html,body{background:var(--deep)}
+body{font-family:"Noto Sans","Helvetica Neue",Helvetica,Arial,sans-serif;color:var(--txt);font-size:14px;line-height:1.6}
+a{color:var(--acc2);text-decoration:none}
+a:hover{text-decoration:underline}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,.3);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.5)}
 
-nav{position:sticky;top:0;z-index:10;background:rgba(23,13,13,.95);backdrop-filter:blur(14px);
-    border-bottom:1px solid var(--bord);padding:14px 32px;display:flex;align-items:center;gap:12px}
-.logo{width:26px;height:26px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.logo svg{width:13px;height:13px;fill:#fff}
-nav span{font-size:14px;font-weight:700}
-a.back{margin-left:auto;font-size:13px;color:var(--sub);text-decoration:none;
-       padding:5px 12px;border:1px solid var(--bord);border-radius:7px;transition:all .15s}
-a.back:hover{color:var(--txt);border-color:var(--acc)}
+/* nav — matches the dashboard header */
+nav{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--bord);
+    padding:0 16px;height:48px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 0 rgba(0,0,0,.2)}
+.nav-logo{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:var(--txt)}
+.nav-icon{width:28px;height:28px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-icon i{font-size:14px;color:#fff}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.nav-back{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--sub);
+          padding:6px 10px;border-radius:var(--r);transition:background .1s,color .1s}
+.nav-back:hover{color:var(--txt);background:var(--surf);text-decoration:none}
+.live-badge{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--green);
+            padding:4px 10px;border-radius:20px;background:rgba(35,165,89,.12)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(35,165,89,.4)}50%{opacity:.8;box-shadow:0 0 0 5px rgba(35,165,89,0)}}
 
-.page{max-width:680px;margin:0 auto;padding:60px 24px 120px}
+/* hero */
+.page{max-width:760px;margin:0 auto;padding:48px 24px 100px}
+.hero{text-align:center;padding:8px 0 40px;border-bottom:1px solid var(--bord);margin-bottom:40px}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:7px;padding:5px 14px;
+              background:var(--adim);border-radius:20px;
+              font-size:11px;font-weight:700;color:var(--acc2);letter-spacing:.06em;
+              text-transform:uppercase;margin-bottom:18px}
+.hero h1{font-size:32px;font-weight:700;letter-spacing:-.01em;margin-bottom:10px;line-height:1.2}
+.hero h1 span{color:var(--acc2)}
+.hero-sub{font-size:14px;color:var(--sub);max-width:440px;margin:0 auto 28px}
 
-h1{font-size:32px;font-weight:700;margin-bottom:6px;letter-spacing:-.02em}
-.intro{color:var(--sub);font-size:14px;margin-bottom:56px}
+/* summary cards */
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:440px;margin:0 auto}
+.sum-card{background:var(--sb);border:1px solid var(--bord);border-radius:var(--r-lg);padding:14px;text-align:center}
+.sum-val{font-size:22px;font-weight:700;font-family:"JetBrains Mono",monospace;color:var(--txt)}
+.sum-lbl{font-size:10.5px;color:var(--mut);margin-top:3px;text-transform:uppercase;letter-spacing:.05em}
+
+/* filter bar */
+.filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:28px;flex-wrap:wrap}
+.filter-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-right:2px}
+.ftag{padding:4px 12px;border-radius:20px;background:var(--comp);font-size:12px;color:var(--sub);
+      cursor:pointer;transition:all .1s;font-weight:500;user-select:none}
+.ftag:hover{color:var(--txt)}
+.ftag.active{background:var(--adim);color:var(--acc2)}
+
+/* search */
+.search-wrap{position:relative;flex:1;max-width:260px;margin-left:auto}
+.search-wrap i{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mut);font-size:15px;pointer-events:none}
+#searchInput{width:100%;background:var(--comp);border:1px solid transparent;border-radius:var(--r);
+             padding:6px 12px 6px 32px;font-family:inherit;font-size:13px;color:var(--txt);
+             outline:none;transition:border-color .1s}
+#searchInput:focus{border-color:var(--acc)}
+#searchInput::placeholder{color:var(--mut)}
 
 /* timeline */
-.tl{display:flex;flex-direction:column;gap:0}
-.entry{display:grid;grid-template-columns:90px 1fr;gap:0 32px;position:relative}
-.entry+.entry{margin-top:42px}
+.timeline{display:flex;flex-direction:column;gap:14px}
+.update-block.hidden{display:none}
 
-/* line connecting entries */
-.entry:not(:last-child) .date-col::after{
-  content:"";position:absolute;left:90px;top:26px;width:1px;
-  height:calc(100% + 42px);background:var(--bord);
-}
-.entry{position:relative}
+.update-card{background:var(--sb);border:1px solid var(--bord);border-radius:var(--r-lg);overflow:hidden}
+.update-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--bord);flex-wrap:wrap}
+.version-tag{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;color:var(--txt);
+             background:var(--comp);border-radius:var(--r);padding:3px 9px;flex-shrink:0}
+.update-title{font-size:14px;font-weight:600;color:var(--txt);flex:1}
+.update-date{font-size:11px;color:var(--mut);font-family:"JetBrains Mono",monospace;flex-shrink:0}
+.update-tags{display:flex;gap:5px;flex-wrap:wrap;padding:10px 18px 0}
+.utag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;
+      border-radius:4px;letter-spacing:.04em;text-transform:uppercase}
+.utag.major{background:rgba(88,101,242,.15);color:var(--acc2)}
+.utag.feature{background:rgba(35,165,89,.14);color:#57d98a}
+.utag.fix{background:rgba(240,178,50,.14);color:#f0b232}
+.utag.security{background:rgba(235,69,158,.14);color:var(--pink)}
+.utag.tweak{background:var(--comp);color:var(--sub)}
 
-.date-col{text-align:right;padding-top:3px;position:relative}
-.date-col::before{content:"";position:absolute;right:-20px;top:9px;
-  width:8px;height:8px;border-radius:50%;background:var(--acc);
-  box-shadow:0 0 8px rgba(192,57,43,.5);z-index:1}
-.ver{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;
-     color:var(--acc2);display:block;margin-bottom:2px}
-.date{font-size:11px;color:var(--mut);font-family:"JetBrains Mono",monospace;white-space:nowrap}
+.change-list{list-style:none;padding:12px 18px 16px;display:flex;flex-direction:column;gap:7px}
+.change-list li{display:flex;align-items:flex-start;gap:9px;font-size:13px;color:var(--sub);line-height:1.55}
+.change-list li i{font-size:14px;flex-shrink:0;margin-top:2px}
+.change-list li i.add{color:var(--green)}
+.change-list li i.fix{color:var(--yel)}
+.change-list li i.change{color:var(--acc2)}
+.change-list li i.security{color:var(--pink)}
+.change-list li strong{color:var(--txt)}
+.change-list code{background:var(--comp);padding:1px 5px;border-radius:3px;font-family:"JetBrains Mono",monospace;font-size:12px}
 
-.content-col{padding-bottom:4px}
-.etitle{font-size:16px;font-weight:700;color:var(--txt);margin-bottom:10px;line-height:1.35}
-.new-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.07em;
-           text-transform:uppercase;padding:1px 7px;border-radius:4px;vertical-align:middle;
-           background:rgba(46,204,113,.15);color:var(--green);border:1px solid rgba(46,204,113,.3);margin-left:8px}
-ul{list-style:none;display:flex;flex-direction:column;gap:6px}
-ul li{font-size:14px;color:var(--sub);line-height:1.6;padding-left:14px;position:relative}
-ul li::before{content:"—";position:absolute;left:0;color:var(--mut)}
-ul li strong{color:var(--txt);font-weight:600}
+.latest-ribbon{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
+               padding:2px 9px;border-radius:4px;text-transform:uppercase;letter-spacing:.05em;
+               background:rgba(35,165,89,.15);color:#57d98a;flex-shrink:0}
+
+#emptyState{display:none;text-align:center;padding:50px 20px;color:var(--mut)}
+#emptyState i{font-size:40px;opacity:.4;display:block;margin-bottom:12px}
+
+footer{text-align:center;padding:24px;font-size:12px;color:var(--mut);border-top:1px solid var(--bord);margin-top:16px}
+footer strong{color:var(--sub)}
 </style>
 </head>
 <body>
 
 <nav>
-  <div class="logo">
-    <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+  <div class="nav-logo">
+    <div class="nav-icon"><i class="ti ti-bolt"></i></div>
+    Bot Dashboard
   </div>
-  <span>Bot Dashboard</span>
-  <a href="/" class="back">← Dashboard</a>
+  <div class="nav-right">
+    <div class="live-badge"><div class="live-dot"></div> Live</div>
+    <a href="/" class="nav-back"><i class="ti ti-arrow-left"></i> Back to Dashboard</a>
+  </div>
 </nav>
 
 <div class="page">
-  <h1>What's new</h1>
-  <p class="intro">New features added to the dashboard, newest first.</p>
+  <div class="hero">
+    <div class="hero-eyebrow"><i class="ti ti-history"></i> Changelog</div>
+    <h1>Update <span>Log</span></h1>
+    <p class="hero-sub">What's changed so far. Newest stuff up top.</p>
+    <div class="summary-grid">
+      <div class="sum-card"><div class="sum-val" id="totalUpdates">—</div><div class="sum-lbl">Releases</div></div>
+      <div class="sum-card"><div class="sum-val" id="totalFeatures">—</div><div class="sum-lbl">Features</div></div>
+      <div class="sum-card"><div class="sum-val" id="totalFixes">—</div><div class="sum-lbl">Fixes</div></div>
+    </div>
+  </div>
 
-  <div class="tl">
+  <div class="filter-bar">
+    <span class="filter-label">Filter</span>
+    <div class="ftag active" data-filter="all" onclick="setFilter('all')">All</div>
+    <div class="ftag" data-filter="major" onclick="setFilter('major')">Major</div>
+    <div class="ftag" data-filter="feature" onclick="setFilter('feature')">Features</div>
+    <div class="ftag" data-filter="fix" onclick="setFilter('fix')">Fixes</div>
+    <div class="ftag" data-filter="security" onclick="setFilter('security')">Security</div>
+    <div class="ftag" data-filter="tweak" onclick="setFilter('tweak')">Tweaks</div>
+    <div class="search-wrap">
+      <i class="ti ti-search"></i>
+      <input id="searchInput" type="text" placeholder="Search updates…" oninput="applyFilters()">
+    </div>
+  </div>
 
-    <div class="entry">
-      <div class="date-col">
-        <span class="ver">v1.5</span>
-        <span class="date">Jun 24, 2026</span>
-      </div>
-      <div class="content-col">
-        <div class="etitle">Delete bot messages <span class="new-badge">Latest</span></div>
-        <ul>
-          <li>Hover any message the bot sent and a trash icon appears — click it to delete instantly</li>
-          <li>Works in both server channels and DMs</li>
-          <li>Everything is faster — messages load quicker, status updates less often, and sending feels snappier</li>
+  <div class="timeline" id="timeline">
+
+    <!-- v1.4 -->
+    <div class="update-block" data-tags="major feature">
+      <div class="update-card">
+        <div class="update-head">
+          <span class="version-tag">v1.4</span>
+          <span class="update-title">DMs, Member Profiles &amp; Delete Messages</span>
+          <span class="latest-ribbon"><i class="ti ti-sparkles"></i> Latest</span>
+          <span class="update-date">Jun 23, 2026</span>
+        </div>
+        <div class="update-tags">
+          <span class="utag major">Major</span>
+          <span class="utag feature">Feature</span>
+        </div>
+        <ul class="change-list">
+          <li><i class="ti ti-plus add"></i><strong>Member sidebar</strong> is here — shows who's online, idle/DND, or offline, with avatars and status dots</li>
+          <li><i class="ti ti-plus add"></i>Click a member to pull up a <strong>DM view</strong>. Messages come in live, no refreshing needed</li>
+          <li><i class="ti ti-plus add"></i>You can actually <strong>send DMs</strong> now, straight from the dashboard</li>
+          <li><i class="ti ti-plus add"></i>Hover a message to get a trash icon — <strong>delete</strong> works on channel messages and DMs the bot sent</li>
+          <li><i class="ti ti-plus add"></i>Added a back button on the DM view so you're not stuck there</li>
+          <li><i class="ti ti-change change"></i>New routes on the backend for members, DMs, and message deletion</li>
+          <li><i class="ti ti-change change"></i>Turned on member + presence intents so status actually updates live</li>
         </ul>
       </div>
     </div>
 
-    <div class="entry">
-      <div class="date-col">
-        <span class="ver">v1.4</span>
-        <span class="date">Jun 23, 2026</span>
-      </div>
-      <div class="content-col">
-        <div class="etitle">DMs and member profiles</div>
-        <ul>
-          <li>Click any avatar or username to open a DM conversation with them</li>
-          <li>Member list on the right shows who's online, idle, DND, and offline in real time</li>
-          <li>Incoming DMs appear live without refreshing</li>
-          <li>Back button returns you to the server channel you were in</li>
+    <!-- v1.3 -->
+    <div class="update-block" data-tags="major tweak">
+      <div class="update-card">
+        <div class="update-head">
+          <span class="version-tag">v1.3</span>
+          <span class="update-title">Theme Overhaul</span>
+          <span class="update-date">Jun 23, 2026</span>
+        </div>
+        <div class="update-tags">
+          <span class="utag major">Major</span>
+          <span class="utag tweak">Tweak</span>
+        </div>
+        <ul class="change-list">
+          <li><i class="ti ti-palette change"></i>Reworked the color system to match the dashboard's own look and feel</li>
+          <li><i class="ti ti-change change"></i>Went through and updated basically every color variable — backgrounds, borders, glows, avatars, all of it</li>
+          <li><i class="ti ti-change change"></i>Toasts, badges, pills all recolored to match</li>
+          <li><i class="ti ti-change change"></i>Old policy page is gone, replaced with this changelog</li>
         </ul>
       </div>
     </div>
 
-    <div class="entry">
-      <div class="date-col">
-        <span class="ver">v1.3</span>
-        <span class="date">Jun 23, 2026</span>
-      </div>
-      <div class="content-col">
-        <div class="etitle">Red theme</div>
-        <ul>
-          <li>Switched the whole UI to a deep red color scheme</li>
-          <li>Added this update log page</li>
+    <!-- v1.2 -->
+    <div class="update-block" data-tags="feature fix">
+      <div class="update-card">
+        <div class="update-head">
+          <span class="version-tag">v1.2</span>
+          <span class="update-title">Custom Bots &amp; Multi-Bot Sending</span>
+          <span class="update-date">Jun 20, 2026</span>
+        </div>
+        <div class="update-tags">
+          <span class="utag feature">Feature</span>
+          <span class="utag fix">Fix</span>
+        </div>
+        <ul class="change-list">
+          <li><i class="ti ti-plus add"></i>You can now add extra bot tokens and send messages as a different bot</li>
+          <li><i class="ti ti-plus add"></i>Little pills let you pick which bot sends the message before you hit Send</li>
+          <li><i class="ti ti-plus add"></i>Sidebar for adding/removing custom bots, one click and you're done</li>
+          <li><i class="ti ti-fix fix"></i>Token validation was timing out too fast on slower connections, bumped it up</li>
+          <li><i class="ti ti-fix fix"></i>Custom bot list wasn't refreshing after you deleted one, fixed</li>
+          <li><i class="ti ti-change change"></i>Added GET/POST/DELETE on <code>/bots</code></li>
         </ul>
       </div>
     </div>
 
-    <div class="entry">
-      <div class="date-col">
-        <span class="ver">v1.2</span>
-        <span class="date">Jun 20, 2026</span>
-      </div>
-      <div class="content-col">
-        <div class="etitle">Multiple bots</div>
-        <ul>
-          <li>Add extra bot tokens and choose which one sends each message</li>
-          <li>Manage bots from the sidebar — add or remove any time</li>
+    <!-- v1.1 -->
+    <div class="update-block" data-tags="feature fix tweak">
+      <div class="update-card">
+        <div class="update-head">
+          <span class="version-tag">v1.1</span>
+          <span class="update-title">Reply System, Notifications &amp; Live Feed</span>
+          <span class="update-date">Jun 15, 2026</span>
+        </div>
+        <div class="update-tags">
+          <span class="utag feature">Feature</span>
+          <span class="utag fix">Fix</span>
+          <span class="utag tweak">Tweak</span>
+        </div>
+        <ul class="change-list">
+          <li><i class="ti ti-plus add"></i>Can reply to messages now — click or hover one and the reply bar shows what you're replying to</li>
+          <li><i class="ti ti-plus add"></i>Messages show up live as they come in, no more refreshing the page</li>
+          <li><i class="ti ti-plus add"></i>Bell icon in the header lights up when someone @mentions the bot or replies to it</li>
+          <li><i class="ti ti-plus add"></i>Switching channels now pulls in the last 50 messages automatically</li>
+          <li><i class="ti ti-plus add"></i>Bot events (connects, sends, etc) get logged to a webhook now</li>
+          <li><i class="ti ti-fix fix"></i>Fixed the live feed getting stuck in a reconnect loop when the connection dropped</li>
+          <li><i class="ti ti-fix fix"></i>Escape now actually cancels a reply like it's supposed to</li>
+          <li><i class="ti ti-change change"></i>Message box grows as you type instead of staying one line</li>
+          <li><i class="ti ti-change change"></i>Added little toast popups for send success/failure/network issues</li>
         </ul>
       </div>
     </div>
 
-    <div class="entry">
-      <div class="date-col">
-        <span class="ver">v1.1</span>
-        <span class="date">Jun 15, 2026</span>
-      </div>
-      <div class="content-col">
-        <div class="etitle">Replies and live feed</div>
-        <ul>
-          <li>Hover a message and click Reply — the reply bar shows context before you send</li>
-          <li>Messages appear in real time without refreshing</li>
-          <li>Bell icon in the header lights up when the bot is @mentioned or replied to</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="entry">
-      <div class="date-col">
-        <span class="ver">v1.0</span>
-        <span class="date">Jun 10, 2026</span>
-      </div>
-      <div class="content-col">
-        <div class="etitle">First release</div>
-        <ul>
-          <li>Paste your bot token to connect — it never leaves your browser session</li>
-          <li>Browse servers and channels, send messages as your bot</li>
-          <li>Status dot shows whether the bot is online</li>
+    <!-- v1.0 -->
+    <div class="update-block" data-tags="major feature">
+      <div class="update-card">
+        <div class="update-head">
+          <span class="version-tag">v1.0</span>
+          <span class="update-title">Initial Release</span>
+          <span class="update-date">Jun 10, 2026</span>
+        </div>
+        <div class="update-tags">
+          <span class="utag major">Major</span>
+          <span class="utag feature">Feature</span>
+        </div>
+        <ul class="change-list">
+          <li><i class="ti ti-plus add"></i>Paste in your bot token to connect — it only lives in sessionStorage, nothing else</li>
+          <li><i class="ti ti-plus add"></i>Server list shows every guild the bot's in</li>
+          <li><i class="ti ti-plus add"></i>Pick a text channel from chips along the top bar</li>
+          <li><i class="ti ti-plus add"></i>Send messages as the bot with Enter or the Send button</li>
+          <li><i class="ti ti-plus add"></i>Little status pill with a pulsing dot shows if the bot's online</li>
         </ul>
       </div>
     </div>
 
   </div>
+
+  <div id="emptyState">
+    <i class="ti ti-search-off"></i>
+    No updates match your search.
+  </div>
 </div>
 
+<footer>
+  <strong>Bot Dashboard</strong> &mdash; Changelog &middot; All times local &middot; Newest first
+</footer>
+
+<script>
+var currentFilter = 'all';
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.ftag').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.filter === f);
+  });
+  applyFilters();
+}
+
+function applyFilters() {
+  var q = document.getElementById('searchInput').value.toLowerCase().trim();
+  var blocks = document.querySelectorAll('.update-block');
+  var visible = 0;
+  blocks.forEach(function(b) {
+    var tags = (b.dataset.tags || '').split(' ');
+    var tagMatch = currentFilter === 'all' || tags.indexOf(currentFilter) !== -1;
+    var textMatch = !q || b.textContent.toLowerCase().indexOf(q) !== -1;
+    var show = tagMatch && textMatch;
+    b.classList.toggle('hidden', !show);
+    if (show) visible++;
+  });
+  document.getElementById('emptyState').style.display = visible === 0 ? 'block' : 'none';
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  var blocks = document.querySelectorAll('.update-block');
+  var features = 0, fixes = 0;
+  blocks.forEach(function(b) {
+    features += b.querySelectorAll('li i.add').length;
+    fixes += b.querySelectorAll('li i.fix').length;
+  });
+  document.getElementById('totalUpdates').textContent = blocks.length;
+  document.getElementById('totalFeatures').textContent = features;
+  document.getElementById('totalFixes').textContent = fixes;
+});
+</script>
 </body>
 </html>
