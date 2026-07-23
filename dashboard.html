@@ -476,6 +476,60 @@ textarea::placeholder{color:var(--mut)}
 .srv-danger-title{font-size:12px;font-weight:700;color:var(--red);text-transform:uppercase;
   letter-spacing:.04em;margin-bottom:12px}
 .channel-create-row{display:flex;gap:8px}
+
+/* ── profile popout ── */
+#profilePanel{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;
+  align-items:center;justify-content:center;z-index:190}
+#profilePanel.open{display:flex}
+.pf-card{background:var(--sb);border-radius:var(--r-xl);width:340px;max-width:92vw;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden}
+.pf-banner{height:60px;background:linear-gradient(135deg,var(--acc),var(--acc2));position:relative}
+.pf-close{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;
+  background:rgba(0,0,0,.4);border:none;color:#fff;cursor:pointer;display:flex;
+  align-items:center;justify-content:center}
+.pf-body{padding:0 16px 16px}
+.pf-av-wrap{margin-top:-36px;margin-bottom:8px;position:relative;width:72px;height:72px}
+.pf-av{width:72px;height:72px;border-radius:50%;border:5px solid var(--sb);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:24px;color:#fff;
+  background:var(--acc)}
+.pf-status{position:absolute;bottom:2px;right:2px;width:16px;height:16px;border-radius:50%;
+  border:3px solid var(--sb)}
+.pf-name{font-size:18px;font-weight:700;color:var(--txt)}
+.pf-username{font-size:13px;color:var(--sub);margin-bottom:10px}
+.pf-panel{background:var(--comp);border-radius:var(--r-lg);padding:12px;margin-top:8px}
+.pf-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
+  color:var(--sub);margin-bottom:6px}
+.pf-roles{display:flex;flex-wrap:wrap;gap:6px}
+.pf-role-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:12px;
+  background:rgba(255,255,255,.06);font-size:12px;font-weight:500;color:var(--txt)}
+.pf-role-dot{width:8px;height:8px;border-radius:50%}
+.pf-meta-row{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--sub);margin-bottom:6px}
+.pf-meta-row i{margin-top:2px;flex-shrink:0}
+.pf-actions{display:flex;gap:8px;margin-top:12px}
+.pf-actions .mod-btn{flex:1}
+
+/* ── analytics panel ── */
+#analyticsPanel{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;
+  align-items:center;justify-content:center;z-index:190}
+#analyticsPanel.open{display:flex}
+.an-card{background:var(--sb);border:1px solid var(--bord);border-radius:var(--r-xl);
+  width:640px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden}
+.an-body{padding:20px 24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:18px}
+.an-stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.an-stat{background:var(--comp);border-radius:var(--r-lg);padding:14px;text-align:center}
+.an-stat-num{font-size:22px;font-weight:700;color:var(--txt)}
+.an-stat-lbl{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.03em;margin-top:2px}
+.an-bar-row{display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:8px}
+.an-bar-label{width:150px;flex-shrink:0;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.an-bar-track{flex:1;height:8px;background:var(--comp);border-radius:4px;overflow:hidden}
+.an-bar-fill{height:100%;background:var(--acc);border-radius:4px}
+.an-bar-count{width:32px;text-align:right;color:var(--sub);flex-shrink:0}
+.an-feed-item{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bord);font-size:13px}
+.an-feed-item:last-child{border-bottom:none}
+.an-feed-user{font-weight:600;color:var(--txt)}
+.an-feed-action{color:var(--sub);flex:1}
+.an-feed-ts{color:var(--mut);font-size:11px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -684,12 +738,55 @@ textarea::placeholder{color:var(--mut)}
   </div>
 </div>
 
+<!-- Profile Popout -->
+<div id="profilePanel">
+  <div class="pf-card">
+    <div class="pf-banner">
+      <button class="pf-close" onclick="closeProfile()"><i class="ti ti-x" style="font-size:14px"></i></button>
+    </div>
+    <div class="pf-body">
+      <div class="pf-av-wrap">
+        <div class="pf-av" id="pfAv">?</div>
+        <div class="pf-status" id="pfStatus"></div>
+      </div>
+      <div class="pf-name" id="pfName">—</div>
+      <div class="pf-username" id="pfUsername">—</div>
+      <div class="pf-panel">
+        <div class="pf-label">Roles</div>
+        <div class="pf-roles" id="pfRoles"></div>
+      </div>
+      <div class="pf-panel">
+        <div class="pf-meta-row"><i class="ti ti-calendar-plus"></i><span id="pfJoined">—</span></div>
+        <div class="pf-meta-row"><i class="ti ti-user-circle"></i><span id="pfCreated">—</span></div>
+      </div>
+      <div class="pf-actions">
+        <button class="mod-btn primary" onclick="pfMessage()"><i class="ti ti-message-2"></i> Message</button>
+        <button class="mod-btn warn" id="pfModBtn" onclick="pfModerate()" style="display:none"><i class="ti ti-shield"></i> Moderate</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Analytics Panel -->
+<div id="analyticsPanel">
+  <div class="an-card">
+    <div class="srv-card-head">
+      <h2><i class="ti ti-chart-bar" style="margin-right:6px"></i>Site Analytics</h2>
+      <button class="mod-close" onclick="closeAnalytics()"><i class="ti ti-x" style="font-size:18px"></i></button>
+    </div>
+    <div class="an-body" id="anBody">
+      <div style="color:var(--mut);font-size:13px;text-align:center;padding:24px 0"><i class="ti ti-loader spinning" style="font-size:20px"></i></div>
+    </div>
+  </div>
+</div>
+
 <!-- Header -->
 <div id="hdr">
   <div class="logo"><i class="ti ti-bolt"></i></div>
   <h1>Bot Dashboard</h1>
   <div class="hdr-right">
     <a class="policy-link" href="/updates" target="_blank"><i class="ti ti-history"></i> Changelog</a>
+    <button class="hdr-btn" id="analyticsBtn" onclick="openAnalytics()" style="display:none" title="Site Analytics"><i class="ti ti-chart-bar"></i></button>
     <button class="hdr-btn" id="srvMgmtBtn" onclick="openSrvPanel()" style="display:none" title="Server Management"><i class="ti ti-settings"></i></button>
     <button class="hdr-btn" id="accountBtn" onclick="openAccountPanel()" style="display:none"><i class="ti ti-user-circle"></i> <span id="accountBtnLabel">Account</span></button>
     <button class="hdr-btn" id="logoutBtn" onclick="doLogout()" style="display:none"><i class="ti ti-logout"></i> Logout</button>
@@ -1003,6 +1100,9 @@ function onAuthSuccess(){
     var lbl=document.getElementById("accountBtnLabel");
     if(lbl&&_dashUser)lbl.textContent=_dashUser.username||"Account";
   }
+  var anb=document.getElementById("analyticsBtn");
+  if(anb)anb.style.display="flex";
+  fetch("/analytics/pageview",{method:"POST"}).catch(function(){});
   if(SESSION_TOKEN){
     submitToken();
   } else {
@@ -1214,6 +1314,7 @@ function doLogout(){
   document.getElementById("logoutBtn").style.display="none";
   document.getElementById("accountBtn").style.display="none";
   document.getElementById("srvMgmtBtn").style.display="none";
+  document.getElementById("analyticsBtn").style.display="none";
   document.getElementById("notifBadge").style.display="none";
   closeDM();
   document.getElementById("tokenGate").classList.remove("hidden");
@@ -1367,7 +1468,7 @@ function renderMembers(members,bots){
       el.querySelector('[data-act="dm"]').addEventListener("click",function(e){e.stopPropagation();openDM(m);});
       var modBtn=el.querySelector('[data-act="mod"]');
       if(modBtn)modBtn.addEventListener("click",function(e){e.stopPropagation();openModModal(m);});
-      el.addEventListener("click",function(){openDM(m);});
+      el.addEventListener("click",function(){openProfile(m,curServer&&curServer.id);});
       list.appendChild(el);
     });
   });
@@ -1489,13 +1590,13 @@ function buildMsg(msg,showHeader){
     e.stopPropagation();
     var mid=this.dataset.id,mname=this.dataset.name;
     var mem=mid&&memberMap[mid]?memberMap[mid]:{id:mid,name:mname,status:"offline",roles:[]};
-    openDM(mem);
+    openProfile(mem,curServer&&curServer.id);
   });
   el.querySelector(".msg-author").addEventListener("click",function(e){
     e.stopPropagation();
     var mid=this.dataset.id,mname=this.dataset.name;
     var mem=mid&&memberMap[mid]?memberMap[mid]:{id:mid,name:mname,status:"offline",roles:[]};
-    openDM(mem);
+    openProfile(mem,curServer&&curServer.id);
   });
   el.addEventListener("click",function(){setReply(msg.id);});
   return el;
@@ -2064,6 +2165,78 @@ document.getElementById("dmInput").addEventListener("input",function(){
 // Close modal on backdrop click
 document.getElementById("modModal").addEventListener("click",function(e){if(e.target===this)closeModModal();});
 document.getElementById("srvPanel").addEventListener("click",function(e){if(e.target===this)closeSrvPanel();});
+document.getElementById("profilePanel").addEventListener("click",function(e){if(e.target===this)closeProfile();});
+document.getElementById("analyticsPanel").addEventListener("click",function(e){if(e.target===this)closeAnalytics();});
+
+/* ── profile popout ── */
+var pfCurrent=null,pfGuildId=null;
+function openProfile(member,guildId){
+  if(!member)return;
+  pfCurrent=member;pfGuildId=guildId||null;
+  document.getElementById("profilePanel").classList.add("open");
+  var av=document.getElementById("pfAv");
+  av.textContent=ini(member.name);
+  av.style.background=(member.roles&&member.roles[0]&&member.roles[0].color&&member.roles[0].color!=="Default")?member.roles[0].color:ac(member.name);
+  document.getElementById("pfStatus").className="pf-status "+statusDotClass(member.status||"offline");
+  document.getElementById("pfName").textContent=member.name||"—";
+  document.getElementById("pfUsername").textContent="Loading…";
+  document.getElementById("pfRoles").innerHTML='<span style="color:var(--mut);font-size:12px">Loading…</span>';
+  document.getElementById("pfJoined").textContent="—";
+  document.getElementById("pfCreated").textContent="—";
+  document.getElementById("pfModBtn").style.display=(guildId&&hasAnyMod())?"flex":"none";
+
+  var url=guildId?("/profile/"+guildId+"/"+member.id):("/profile/dm/"+member.id);
+  fetch(url).then(function(r){return r.json();}).then(function(p){
+    if(p.error)return;
+    document.getElementById("pfUsername").textContent="@"+(p.username||p.name||"unknown");
+    var roles=(p.roles||[]);
+    document.getElementById("pfRoles").innerHTML=roles.length
+      ? roles.map(function(r){return '<span class="pf-role-pill"><span class="pf-role-dot" style="background:'+(r.color&&r.color!=="Default"?r.color:"#99aab5")+'"></span>'+esc(r.name)+'</span>';}).join("")
+      : '<span style="color:var(--mut);font-size:12px">No roles</span>';
+    if(p.joined_at)document.getElementById("pfJoined").textContent="Joined server "+new Date(p.joined_at).toLocaleDateString();
+    else document.getElementById("pfJoined").textContent="Direct message contact";
+    if(p.account_created)document.getElementById("pfCreated").textContent="Discord member since "+new Date(p.account_created).toLocaleDateString();
+  }).catch(function(){document.getElementById("pfUsername").textContent="@unknown";});
+}
+function closeProfile(){document.getElementById("profilePanel").classList.remove("open");}
+function pfMessage(){if(!pfCurrent)return;closeProfile();openDM(pfCurrent);}
+function pfModerate(){if(!pfCurrent)return;closeProfile();openModModal(pfCurrent);}
+
+/* ── analytics panel ── */
+function openAnalytics(){
+  document.getElementById("analyticsPanel").classList.add("open");
+  document.getElementById("anBody").innerHTML='<div style="color:var(--mut);font-size:13px;text-align:center;padding:24px 0"><i class="ti ti-loader spinning" style="font-size:20px"></i></div>';
+  Promise.all([
+    fetch("/analytics/summary").then(function(r){return r.json();}),
+    fetch("/analytics/feed?limit=30").then(function(r){return r.json();})
+  ]).then(function(results){renderAnalytics(results[0],results[1]);})
+    .catch(function(){document.getElementById("anBody").innerHTML='<div style="color:var(--mut);font-size:13px;text-align:center;padding:24px 0">Failed to load analytics.</div>';});
+}
+function closeAnalytics(){document.getElementById("analyticsPanel").classList.remove("open");}
+function renderAnalytics(summary,feed){
+  var maxCount=Math.max.apply(null,(summary.topActions||[]).map(function(a){return a.count;}).concat([1]));
+  var barsHtml=(summary.topActions||[]).map(function(a){
+    var pct=Math.round((a.count/maxCount)*100);
+    return '<div class="an-bar-row"><div class="an-bar-label">'+esc(a.action)+'</div>'
+      +'<div class="an-bar-track"><div class="an-bar-fill" style="width:'+pct+'%"></div></div>'
+      +'<div class="an-bar-count">'+a.count+'</div></div>';
+  }).join("")||'<div style="color:var(--mut);font-size:13px">No activity yet.</div>';
+
+  var feedHtml=(feed||[]).map(function(e){
+    return '<div class="an-feed-item"><span class="an-feed-user">'+esc(e.user)+'</span>'
+      +'<span class="an-feed-action">'+esc(e.action)+'</span>'
+      +'<span class="an-feed-ts">'+_fmtTs(e.ts)+'</span></div>';
+  }).join("")||'<div style="color:var(--mut);font-size:13px">No activity yet.</div>';
+
+  document.getElementById("anBody").innerHTML=
+    '<div class="an-stat-row">'
+      +'<div class="an-stat"><div class="an-stat-num">'+(summary.totalEvents||0)+'</div><div class="an-stat-lbl">Total Events</div></div>'
+      +'<div class="an-stat"><div class="an-stat-num">'+(summary.uniqueUsers||0)+'</div><div class="an-stat-lbl">Accounts Active</div></div>'
+      +'<div class="an-stat"><div class="an-stat-num">'+(summary.eventsLast24h||0)+'</div><div class="an-stat-lbl">Last 24h</div></div>'
+    +'</div>'
+    +'<div><div class="srv-section-title">Most Used Features</div>'+barsHtml+'</div>'
+    +'<div><div class="srv-section-title">Recent Activity</div>'+feedHtml+'</div>';
+}
 </script>
 </body>
 </html>
