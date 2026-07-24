@@ -665,6 +665,38 @@ app.get("/auth/me", requireAuth, (req, res) => {
   return res.json({ loggedIn: true, id: u.id, email: u.email, username: u.username, createdAt: u.createdAt });
 });
 
+// Admin debug ──────────────────────────────────────────────────────────────────
+// Read-only sanity check for your own deployment. Gated by ADMIN_DEBUG_KEY (set
+// this in Render's env vars — pick something long/random, NOT the shutdown key).
+// Deliberately never returns passwordHash, JWT_SECRET, bot tokens, or any other
+// secret value — only whether things look correctly shaped, so you can debug
+// without ever having a real secret sitting in a response, log, or file.
+const ADMIN_DEBUG_KEY = process.env.ADMIN_DEBUG_KEY || "";
+app.get("/admin/debug", (req, res) => {
+  if (!ADMIN_DEBUG_KEY) return res.status(404).json({ error: "ADMIN_DEBUG_KEY not set" });
+  const key = (req.headers["x-admin-key"] || req.query.key || "").toString();
+  if (key !== ADMIN_DEBUG_KEY) return res.status(401).json({ error: "Invalid admin key" });
+
+  const accounts = Object.values(usersDB).map(u => ({
+    email: u.email,
+    username: u.username,
+    createdAt: u.createdAt,
+    // Confirms bcrypt actually ran (hash starts with $2a$/$2b$/$2y$ and is the
+    // expected length) WITHOUT ever revealing the hash value itself.
+    passwordHashLooksValid: typeof u.passwordHash === "string" && /^\$2[aby]\$\d{2}\$.{53}$/.test(u.passwordHash),
+    activeSessions: Object.keys(u.sessions || {}).length,
+    lastLogin: u.loginHistory?.[0]?.ts || null,
+  }));
+
+  return res.json({
+    accountCount: accounts.length,
+    discordBackupEnabled: DISCORD_BACKUP_ENABLED,
+    usersFileExists: fs.existsSync(USERS_FILE),
+    jwtSecretIsFixed: Boolean(process.env.JWT_SECRET),
+    accounts,
+  });
+});
+
 // Sessions / Devices ───────────────────────────────────────────────────────────
 app.get("/auth/devices", requireAuth, (req, res) => {
   if (!req.dashUser) return res.json([]);
