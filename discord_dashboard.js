@@ -1415,21 +1415,28 @@ app.get("/analytics/feed", requireAuth, (req, res) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-loadUsersFromFile();
-loadActivity();
-if (DISCORD_BACKUP_ENABLED) {
-  discordLoad().then(data => {
-    if (data && Object.keys(usersDB).length === 0) {
-      usersDB = data;
-      mainLog.info(`👤 Restored ${Object.keys(usersDB).length} account(s) from Discord channel backup`);
+async function startServer() {
+  loadUsersFromFile();
+  loadActivity();
+  if (DISCORD_BACKUP_ENABLED && Object.keys(usersDB).length === 0) {
+    try {
+      const data = await discordLoad();
+      if (data && Object.keys(usersDB).length === 0) {
+        usersDB = data;
+        mainLog.info(`👤 Restored ${Object.keys(usersDB).length} account(s) from Discord channel backup`);
+      }
+    } catch (e) {
+      mainLog.warn("Discord backup restore failed:", e.message);
     }
-  }).catch(() => {});
+  }
+
+  app.listen(WEB_PORT, "0.0.0.0", () => {
+    mainLog.info(`🚀  Dashboard running on port ${WEB_PORT}`);
+    mainLog.info(`🔗  URL: ${DASHBOARD_URL}`);
+    mainLog.info(`🔐  Auth page: ${DASHBOARD_URL}/auth`);
+    if (Object.keys(usersDB).length === 0)
+      mainLog.info(`👤  No accounts yet — visit /auth to register the first account`);
+  });
 }
 
-app.listen(WEB_PORT, "0.0.0.0", () => {
-  mainLog.info(`🚀  Dashboard running on port ${WEB_PORT}`);
-  mainLog.info(`🔗  URL: ${DASHBOARD_URL}`);
-  mainLog.info(`🔐  Auth page: ${DASHBOARD_URL}/auth`);
-  if (Object.keys(usersDB).length === 0)
-    mainLog.info(`👤  No accounts yet — visit /auth to register the first account`);
-});
+startServer();
