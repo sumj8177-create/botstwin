@@ -30,8 +30,8 @@ a:hover{text-decoration:underline}
 nav{position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--bord);
     padding:0 16px;height:48px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 0 rgba(0,0,0,.2)}
 .nav-logo{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:var(--txt)}
-.nav-icon{width:28px;height:28px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.nav-icon i{font-size:14px;color:#fff}
+.nav-icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-icon svg{width:100%;height:100%;display:block}
 .nav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
 .nav-back{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--sub);
           padding:6px 10px;border-radius:var(--r);transition:background .1s,color .1s}
@@ -119,7 +119,34 @@ footer strong{color:var(--sub)}
 
 <nav>
   <div class="nav-logo">
-    <div class="nav-icon"><i class="ti ti-bolt"></i></div>
+    <div class="nav-icon"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="badgeGradNav" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5865F2"/>
+      <stop offset="100%" stop-color="#4752C4"/>
+    </linearGradient>
+    <linearGradient id="pulseGradNav" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7289DA"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="140" fill="url(#badgeGradNav)"/>
+  <rect x="16" y="16" width="480" height="480" rx="140" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="2"/>
+  <path d="M 256 108
+           C 351 108, 404 156, 404 226
+           C 404 296, 351 344, 256 344
+           C 232 344, 210 341, 191 335
+           L 130 366
+           C 122 370, 113 363, 116 354
+           L 132 306
+           C 117 285, 108 257, 108 226
+           C 108 156, 161 108, 256 108 Z"
+        fill="#1E1F22" fill-opacity="0.92"/>
+  <path d="M 150 226 L 196 226 L 214 184 L 240 268 L 262 214 L 278 246 L 296 226 L 362 226"
+        fill="none" stroke="url(#pulseGradNav)" stroke-width="14"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="150" cy="226" r="11" fill="#23A559"/>
+</svg></div>
     Bot Dashboard
   </div>
   <div class="nav-right">
@@ -156,13 +183,34 @@ footer strong{color:var(--sub)}
 
   <div class="timeline" id="timeline">
 
+    <!-- v1.5 -->
+    <div class="update-block" data-tags="feature fix">
+      <div class="update-card">
+        <div class="update-head">
+          <span class="version-tag">v1.5</span>
+          <span class="update-title">New Logo &amp; Account Persistence Fix</span>
+          <span class="latest-ribbon"><i class="ti ti-sparkles"></i> Latest</span>
+          <span class="update-date">Jul 24, 2026</span>
+        </div>
+        <div class="update-tags">
+          <span class="utag feature">Feature</span>
+          <span class="utag fix">Fix</span>
+        </div>
+        <ul class="change-list">
+          <li><i class="ti ti-plus add"></i>New logo across the board — sign-in screen, token gate, header, and this changelog</li>
+          <li><i class="ti ti-fix fix"></i><strong>Accounts were getting wiped on every redeploy.</strong> The server started accepting logins before it had finished restoring saved accounts from the Discord channel backup, so a fresh deploy would briefly think no one had ever registered</li>
+          <li><i class="ti ti-fix fix"></i>Server now waits for the account restore to finish before it opens up, so your login sticks around across restarts and redeploys</li>
+          <li><i class="ti ti-fix fix"></i>Sessions no longer get invalidated on restart when a fixed <code>JWT_SECRET</code> is configured — previously a new one was generated every time the process restarted, signing everyone out</li>
+        </ul>
+      </div>
+    </div>
+
     <!-- v1.4 -->
     <div class="update-block" data-tags="major feature">
       <div class="update-card">
         <div class="update-head">
           <span class="version-tag">v1.4</span>
           <span class="update-title">DMs, Member Profiles &amp; Delete Messages</span>
-          <span class="latest-ribbon"><i class="ti ti-sparkles"></i> Latest</span>
           <span class="update-date">Jun 23, 2026</span>
         </div>
         <div class="update-tags">
