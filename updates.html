@@ -198,9 +198,8 @@ footer strong{color:var(--sub)}
         </div>
         <ul class="change-list">
           <li><i class="ti ti-plus add"></i>New logo across the board — sign-in screen, token gate, header, and this changelog</li>
-          <li><i class="ti ti-fix fix"></i><strong>Accounts were getting wiped on every redeploy.</strong> The server started accepting logins before it had finished restoring saved accounts from the Discord channel backup, so a fresh deploy would briefly think no one had ever registered</li>
-          <li><i class="ti ti-fix fix"></i>Server now waits for the account restore to finish before it opens up, so your login sticks around across restarts and redeploys</li>
-          <li><i class="ti ti-fix fix"></i>Sessions no longer get invalidated on restart when a fixed <code>JWT_SECRET</code> is configured — previously a new one was generated every time the process restarted, signing everyone out</li>
+          <li><i class="ti ti-fix fix"></i>Fixed accounts occasionally getting wiped after an update — your login should now stick around</li>
+          <li><i class="ti ti-fix fix"></i>Fixed sessions randomly getting logged out — "remember me" actually keeps you signed in now</li>
         </ul>
       </div>
     </div>
