@@ -27,9 +27,8 @@ body{font-family:"Noto Sans","Helvetica Neue",Helvetica,Arial,sans-serif;display
 #hdr{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;
      background:var(--bg);border-bottom:1px solid var(--bord);flex-shrink:0;
      box-shadow:0 1px 0 rgba(0,0,0,.2)}
-.logo{width:28px;height:28px;border-radius:50%;background:var(--acc);
-      display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.logo i{font-size:14px;color:#fff}
+.logo{width:28px;height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo svg{width:100%;height:100%;display:block}
 #hdr h1{font-size:15px;font-weight:700;color:var(--txt)}
 .hdr-right{display:flex;align-items:center;gap:4px;margin-left:auto}
 a.policy-link,button.hdr-btn{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--sub);
@@ -273,7 +272,6 @@ textarea::placeholder{color:var(--mut)}
   gap:20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .gate-logo{display:flex;align-items:center;justify-content:center;gap:12px}
 .gate-logo .logo{width:40px;height:40px}
-.gate-logo .logo i{font-size:20px}
 .gate-logo h2{font-size:24px;font-weight:700}
 .gate-desc{font-size:14px;color:var(--sub);text-align:center;line-height:1.6}
 .gate-field{display:flex;flex-direction:column;gap:8px}
@@ -305,7 +303,7 @@ textarea::placeholder{color:var(--mut)}
   padding:32px 28px;width:100%;max-width:420px;display:flex;flex-direction:column;
   gap:18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .auth-logo{display:flex;align-items:center;justify-content:center;gap:12px}
-.auth-logo .logo{width:40px;height:40px}.auth-logo .logo i{font-size:20px}
+.auth-logo .logo{width:40px;height:40px}
 .auth-logo h2{font-size:22px;font-weight:700;color:var(--txt)}
 .auth-view{display:none;flex-direction:column;gap:14px}
 .auth-view.active{display:flex}
@@ -537,7 +535,34 @@ textarea::placeholder{color:var(--mut)}
 <!-- Auth Gate (Dashboard Login / Register) -->
 <div id="authGate">
   <div class="auth-card">
-    <div class="auth-logo"><div class="logo"><i class="ti ti-bolt"></i></div><h2>Bot Dashboard</h2></div>
+    <div class="auth-logo"><div class="logo"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="badgeGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5865F2"/>
+      <stop offset="100%" stop-color="#4752C4"/>
+    </linearGradient>
+    <linearGradient id="pulseGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7289DA"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="140" fill="url(#badgeGrad1)"/>
+  <rect x="16" y="16" width="480" height="480" rx="140" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="2"/>
+  <path d="M 256 108
+           C 351 108, 404 156, 404 226
+           C 404 296, 351 344, 256 344
+           C 232 344, 210 341, 191 335
+           L 130 366
+           C 122 370, 113 363, 116 354
+           L 132 306
+           C 117 285, 108 257, 108 226
+           C 108 156, 161 108, 256 108 Z"
+        fill="#1E1F22" fill-opacity="0.92"/>
+  <path d="M 150 226 L 196 226 L 214 184 L 240 268 L 262 214 L 278 246 L 296 226 L 362 226"
+        fill="none" stroke="url(#pulseGrad1)" stroke-width="14"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="150" cy="226" r="11" fill="#23A559"/>
+</svg></div><h2>Bot Dashboard</h2></div>
 
     <!-- login / register tabs -->
     <div id="authTabRow" class="auth-tabs">
@@ -638,7 +663,34 @@ textarea::placeholder{color:var(--mut)}
 <!-- Token Gate -->
 <div id="tokenGate">
   <div class="gate-card">
-    <div class="gate-logo"><div class="logo"><i class="ti ti-bolt"></i></div><h2>Bot Dashboard</h2></div>
+    <div class="gate-logo"><div class="logo"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="badgeGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5865F2"/>
+      <stop offset="100%" stop-color="#4752C4"/>
+    </linearGradient>
+    <linearGradient id="pulseGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7289DA"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="140" fill="url(#badgeGrad2)"/>
+  <rect x="16" y="16" width="480" height="480" rx="140" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="2"/>
+  <path d="M 256 108
+           C 351 108, 404 156, 404 226
+           C 404 296, 351 344, 256 344
+           C 232 344, 210 341, 191 335
+           L 130 366
+           C 122 370, 113 363, 116 354
+           L 132 306
+           C 117 285, 108 257, 108 226
+           C 108 156, 161 108, 256 108 Z"
+        fill="#1E1F22" fill-opacity="0.92"/>
+  <path d="M 150 226 L 196 226 L 214 184 L 240 268 L 262 214 L 278 246 L 296 226 L 362 226"
+        fill="none" stroke="url(#pulseGrad2)" stroke-width="14"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="150" cy="226" r="11" fill="#23A559"/>
+</svg></div><h2>Bot Dashboard</h2></div>
     <p class="gate-desc">Enter your Discord bot token to connect.<br>Your token is stored in your browser only.</p>
     <div class="gate-field">
       <label for="gateToken">Bot Token</label>
@@ -782,7 +834,34 @@ textarea::placeholder{color:var(--mut)}
 
 <!-- Header -->
 <div id="hdr">
-  <div class="logo"><i class="ti ti-bolt"></i></div>
+  <div class="logo"><svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="badgeGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5865F2"/>
+      <stop offset="100%" stop-color="#4752C4"/>
+    </linearGradient>
+    <linearGradient id="pulseGrad3" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7289DA"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="140" fill="url(#badgeGrad3)"/>
+  <rect x="16" y="16" width="480" height="480" rx="140" fill="none" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="2"/>
+  <path d="M 256 108
+           C 351 108, 404 156, 404 226
+           C 404 296, 351 344, 256 344
+           C 232 344, 210 341, 191 335
+           L 130 366
+           C 122 370, 113 363, 116 354
+           L 132 306
+           C 117 285, 108 257, 108 226
+           C 108 156, 161 108, 256 108 Z"
+        fill="#1E1F22" fill-opacity="0.92"/>
+  <path d="M 150 226 L 196 226 L 214 184 L 240 268 L 262 214 L 278 246 L 296 226 L 362 226"
+        fill="none" stroke="url(#pulseGrad3)" stroke-width="14"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="150" cy="226" r="11" fill="#23A559"/>
+</svg></div>
   <h1>Bot Dashboard</h1>
   <div class="hdr-right">
     <a class="policy-link" href="/updates" target="_blank"><i class="ti ti-history"></i> Changelog</a>
